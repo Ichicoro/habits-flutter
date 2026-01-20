@@ -1,0 +1,5 @@
+include: package:flutter_lints/flutter.yaml
+analyzer:
+  errors:
+    library_prefixes: ignore
+    use_super_parameters: ignore

@@ -1,0 +1,37 @@
+name: habits
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.10.7
+
+dependencies:
+  flutter:
+    sdk: flutter
+  dio: ^5.9.0
+  google_fonts: ^7.0.2
+  shared_preferences: ^2.5.4
+  get_it: ^7.6.0
+  flutter_riverpod: ^2.4.0
+  intl: ^0.20.2
+  native_glass_navbar: ^1.0.1
+  smooth_sheets: ^0.16.0
+  watch_it: ^1.4.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  fonts:
+    - family: BasteleurBold
+      fonts:
+        - asset: fonts/Basteleur-Bold.ttf
+          weight: 700
+    - family: BasteleurMoonlight
+      fonts:
+        - asset: fonts/Basteleur-Moonlight.ttf
+          weight: 700
+  uses-material-design: true
