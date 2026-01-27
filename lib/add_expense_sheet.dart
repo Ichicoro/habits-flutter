@@ -28,74 +28,152 @@ void showAddExpenseSheet(BuildContext context, {Expense? expense}) {
   );
 }
 
-class AddExpenseSheet extends WatchingStatefulWidget {
-  Expense? expense;
-  AddExpenseSheet({super.key, this.expense});
+class ParticipantsSection extends StatefulWidget {
+  final Board board;
+  final SplitTypeEnum splitType;
+  final List<ExpenseSplit>? splits;
+  final double total;
+
+  const ParticipantsSection({
+    super.key,
+    required this.board,
+    required this.splitType,
+    required this.total,
+    this.splits,
+  });
 
   @override
-  State<AddExpenseSheet> createState() =>
-      _AddExpenseSheetState(expense: expense);
+  State<ParticipantsSection> createState() => _ParticipantsSectionState();
 }
 
-class _AddExpenseSheetState extends State<AddExpenseSheet> {
-  final TextEditingController _amountController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
-  ExpenseCategory? _selectedCategory;
-  SplitTypeEnum _splitType = SplitTypeEnum.equal;
-  List<ExpenseSplit> _splits = [];
+class Participants {
+  bool isActive;
+  double? percentage;
+  double amount;
+  User user;
+  late TextEditingController controller;
 
-  late ApiClient apiClient;
+  Participants({
+    required this.user,
+    this.isActive = false,
+    this.percentage,
+    this.amount = 0.0,
+  }) {
+    controller = TextEditingController();
+  }
 
-  Expense? expense;
+  void dispose() {
+    controller.dispose();
+  }
+}
 
-  _AddExpenseSheetState({this.expense});
+class _ParticipantsSectionState extends State<ParticipantsSection> {
+  List<Participants> participants = [];
+
+  @override
+  void dispose() {
+    for (var p in participants) {
+      p.dispose();
+    }
+    super.dispose();
+  }
+
+  void updateValues() {
+    // Dispose old controllers
+    for (var p in participants) {
+      p.dispose();
+    }
+
+    if (widget.splits != null && widget.splits!.isNotEmpty) {
+      participants = widget.splits!
+          .map(
+            (split) => Participants(
+              user: split.user,
+              isActive: true,
+              amount: split.shareAmount,
+              percentage: split.percentage,
+            ),
+          )
+          .toList();
+      participants += widget.board.users
+          .where(
+            (user) => !widget.splits!.any((split) => split.user.id == user.id),
+          )
+          .map(
+            (user) => Participants(
+              isActive: false,
+              user: user,
+              amount: 0.0,
+              percentage: 0.0,
+            ),
+          )
+          .toList();
+    } else {
+      final splitAmount = widget.board.users.isEmpty
+          ? 0.0
+          : widget.total / widget.board.users.length;
+      participants = widget.board.users
+          .map(
+            (user) => Participants(
+              isActive: true,
+              user: user,
+              amount: splitAmount,
+              percentage: widget.splitType == SplitTypeEnum.percentage
+                  ? 100 / widget.board.users.length
+                  : null,
+            ),
+          )
+          .toList();
+    }
+
+    _updateControllerValues();
+    participants.sort((a, b) => a.user.username.compareTo(b.user.username));
+  }
+
+  void _updateControllerValues() {
+    final activeCount = participants.where((p) => p.isActive).length;
+
+    for (var p in participants) {
+      if (!p.isActive) {
+        p.controller.text = '0.00';
+      } else if (widget.splitType == SplitTypeEnum.percentage) {
+        // Even split: 100% divided among active participants
+        final evenPercentage = activeCount == 0 ? 0.0 : 100.0 / activeCount;
+        p.percentage = evenPercentage;
+        p.controller.text = evenPercentage.toStringAsFixed(2);
+      } else if (widget.splitType == SplitTypeEnum.equal) {
+        // Even split: total divided among active participants
+        final evenAmount = activeCount == 0 ? 0.0 : widget.total / activeCount;
+        p.amount = evenAmount;
+        p.controller.text = evenAmount.toStringAsFixed(2);
+      } else {
+        // SplitTypeEnum.amount: even split by total divided among active
+        final evenAmount = activeCount == 0 ? 0.0 : widget.total / activeCount;
+        p.amount = evenAmount;
+        p.controller.text = evenAmount.toStringAsFixed(2);
+      }
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-    apiClient = getIt.get<ApiClient>();
-    CurrentBoardRepository boardRepository = getIt
-        .get<CurrentBoardRepository>();
-    if (expense != null) {
-      _amountController.text = expense!.amount.toStringAsFixed(2);
-      _descriptionController.text = expense!.description!;
-      _selectedCategory = expense!.category;
-      _splitType = expense!.splitType;
-      _splits = expense!.splits;
-    } else {
-      var board = boardRepository.currentBoard.value;
-      if (board == null) {
-        return;
-      }
-      _splitType = SplitTypeEnum.equal;
-      _splits =
-          boardRepository.currentBoard.value?.users
-              .map(
-                (user) => ExpenseSplit(
-                  id: "",
-                  user: user,
-                  shareAmount: 0,
-                  percentage: board.users.length / 100,
-                ),
-              )
-              .toList() ??
-          [];
-    }
+    updateValues();
   }
 
   @override
-  void dispose() {
-    _amountController.dispose();
-    _descriptionController.dispose();
-    super.dispose();
+  void didUpdateWidget(covariant ParticipantsSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    updateValues();
   }
 
-  Widget _buildParticipantsSection(Board? board) {
-    if (board == null) {
+  @override
+  Widget build(BuildContext context) {
+    if (participants.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    final users = board.users;
+    final users = widget.board.users;
 
     if (users.isEmpty) {
       return Center(
@@ -110,46 +188,58 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
     }
 
     return Column(
-      children: users
+      children: participants
           .map(
             (member) => Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Row(
                 children: [
                   Checkbox(
-                    value: _splits.any((s) => s.user.id == member.id),
+                    value: member.isActive,
                     onChanged: (val) {
                       setState(() {
-                        // Handle split checkbox
+                        member.isActive = val ?? false;
+                        _updateControllerValues();
                       });
                     },
                   ),
                   Expanded(
                     child: Text(
-                      member.firstName != null && member.firstName!.isNotEmpty
-                          ? member.firstName!
-                          : member.username,
+                      member.user.firstName != null &&
+                              member.user.firstName!.isNotEmpty
+                          ? member.user.firstName!
+                          : member.user.username,
                     ),
                   ),
                   SizedBox(
                     width: 100,
                     child: TextField(
+                      controller: member.controller,
                       keyboardType: TextInputType.numberWithOptions(
                         decimal: true,
                         signed: false,
                       ),
                       decoration: InputDecoration(
-                        labelText: _splitType == SplitTypeEnum.amount
-                            ? "Amount"
-                            : "Percent",
+                        labelText: widget.splitType == SplitTypeEnum.percentage
+                            ? "Percent"
+                            : "Amount",
                         border: OutlineInputBorder(),
                         isDense: true,
-                        enabled: _splitType != SplitTypeEnum.equal,
+                        enabled: widget.splitType != SplitTypeEnum.equal,
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 8,
                           vertical: 6,
                         ),
                       ),
+                      onChanged: (value) {
+                        setState(() {
+                          if (widget.splitType == SplitTypeEnum.percentage) {
+                            member.percentage = double.tryParse(value) ?? 0.0;
+                          } else {
+                            member.amount = double.tryParse(value) ?? 0.0;
+                          }
+                        });
+                      },
                     ),
                   ),
                 ],
@@ -158,6 +248,79 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
           )
           .toList(),
     );
+  }
+}
+
+class AddExpenseSheet extends WatchingStatefulWidget {
+  Expense? expense;
+  AddExpenseSheet({super.key, this.expense});
+
+  @override
+  State<AddExpenseSheet> createState() =>
+      _AddExpenseSheetState(expense: expense);
+}
+
+class _AddExpenseSheetState extends State<AddExpenseSheet> {
+  final TextEditingController _amountController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+  ExpenseCategory? _selectedCategory;
+  SplitTypeEnum _splitType = SplitTypeEnum.equal;
+
+  late ApiClient apiClient;
+
+  Expense? expense;
+
+  _AddExpenseSheetState({this.expense});
+
+  @override
+  void initState() {
+    super.initState();
+    apiClient = getIt.get<ApiClient>();
+    if (expense != null) {
+      _amountController.text = expense!.amount.toStringAsFixed(2);
+      _descriptionController.text = expense!.description!;
+      _selectedCategory = expense!.category;
+      _splitType = expense!.splitType;
+    }
+    // Listen for amount changes to recalculate participant splits
+    _amountController.addListener(() {
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  void _sendDataUpdate() async {
+    // Collect data and send to API
+    var currentBoard = watchValue(
+      (CurrentBoardRepository br) => br.currentBoard,
+    );
+    if (currentBoard == null) return;
+    double amount = double.tryParse(_amountController.text) ?? 0.0;
+    String description = _descriptionController.text;
+
+    if (widget.expense != null) {
+      // Update existing expense
+      await apiClient.updateExpense({
+        'amount': amount,
+        'description': description,
+        'category_id': _selectedCategory?.id,
+        'split_type': _splitType.value,
+      }, widget.expense!.id);
+    } else {
+      // Create new expense
+      await apiClient.createExpense({
+        'amount': amount,
+        'description': description,
+        'category_id': _selectedCategory?.id,
+        'split_type': _splitType.value,
+      }, currentBoard.id);
+    }
   }
 
   @override
@@ -174,7 +337,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
         title: Text(expense != null ? 'Edit expense' : 'New expense'),
         actions: [
           TextButton(
-            onPressed: () {},
+            onPressed: () async {},
             child: const Text(
               "Save",
               style: TextStyle(fontFamily: "BasteleurBold"),
@@ -325,7 +488,16 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                           borderRadius: BorderRadius.circular(8),
                           color: Theme.of(context).colorScheme.surfaceContainer,
                         ),
-                        child: _buildParticipantsSection(currentBoard),
+                        child: currentBoard != null
+                            ? ParticipantsSection(
+                                board: currentBoard,
+                                total:
+                                    double.tryParse(_amountController.text) ??
+                                    0.0,
+                                splitType: _splitType,
+                                splits: expense?.splits,
+                              )
+                            : const SizedBox.shrink(),
                       ),
                     ],
                   ),

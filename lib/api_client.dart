@@ -196,11 +196,14 @@ class ApiClient {
     }
   }
 
-  Future<Expense> createExpense(Expense expense, String boardId) async {
+  Future<Expense> createExpense(
+    Map<String, dynamic> data,
+    String boardId,
+  ) async {
     try {
       final response = await _client.post(
         '/api/boards/$boardId/expenses/',
-        data: expense.toJson(),
+        data: data,
       );
       return Expense.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
@@ -208,6 +211,24 @@ class ApiClient {
         await _handleAuthFailure();
       }
       throw Exception('Failed to create expense: ${e.message}');
+    }
+  }
+
+  Future<Expense> updateExpense(
+    Map<String, dynamic> data,
+    String expenseId,
+  ) async {
+    try {
+      final response = await _client.put(
+        '/api/expenses/$expenseId/',
+        data: data,
+      );
+      return Expense.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        await _handleAuthFailure();
+      }
+      throw Exception('Failed to update expense: ${e.message}');
     }
   }
 
