@@ -4,22 +4,24 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'constants.dart' as Constants;
 
 class ApiClient {
-  final String baseUrl;
+  late String baseUrl;
   late Dio _client;
   late SharedPreferencesAsync _prefs;
 
-  ApiClient({required this.baseUrl}) {
+  ApiClient() {
+    _prefs = SharedPreferencesAsync();
     _client = Dio(
       BaseOptions(
         baseUrl: Constants.baseApiUrl,
         headers: {'Content-Type': 'application/json'},
       ),
     );
-    _prefs = SharedPreferencesAsync();
   }
 
   Future<void> init() async {
     final token = await _prefs.getString('auth_token');
+    baseUrl = await _prefs.getString('base_url') ?? Constants.baseApiUrl;
+    _client.options.baseUrl = baseUrl;
     if (token != null) {
       setToken(token);
     }
@@ -38,9 +40,33 @@ class ApiClient {
     _client.options.headers['Authorization'] = 'Token $token';
   }
 
+  void setBaseUrl(String? url) async {
+    baseUrl = url ?? Constants.baseApiUrl;
+    _client.options.baseUrl = url ?? Constants.baseApiUrl;
+    if (url != null) {
+      await _prefs.setString("base_url", url);
+    } else {
+      await _prefs.remove("base_url");
+    }
+  }
+
   Future<void> _handleAuthFailure() async {
     removeToken();
     await _prefs.remove('auth_token');
+  }
+
+  Future<User> getSelf() async {
+    try {
+      final response = await _client.get('/api/users/me/');
+      print("Loaded user: ${response.data}");
+      return User.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        await _handleAuthFailure();
+      }
+      print(e.requestOptions.uri);
+      throw Exception('Failed to fetch current user: ${e.response}');
+    }
   }
 
   Future<void> login(String username, String password) async {
@@ -53,7 +79,6 @@ class ApiClient {
       setToken(token);
       await _prefs.setString('auth_token', token);
     } on DioException catch (e) {
-      print(e.response);
       rethrow;
     }
   }
@@ -62,7 +87,6 @@ class ApiClient {
   Future<List<Board>> getBoards() async {
     try {
       final response = await _client.get('/api/boards/');
-      print(response.data);
       return (response.data as List)
           .map((e) => Board.fromJson(e as Map<String, dynamic>))
           .toList();
@@ -210,6 +234,7 @@ class ApiClient {
       if (e.response?.statusCode == 401) {
         await _handleAuthFailure();
       }
+      print(e.response!.data);
       throw Exception('Failed to create expense: ${e.message}');
     }
   }
@@ -228,7 +253,8 @@ class ApiClient {
       if (e.response?.statusCode == 401) {
         await _handleAuthFailure();
       }
-      throw Exception('Failed to update expense: ${e.message}');
+      rethrow;
+      // throw Exception('Failed to update expense: ${e.message}');
     }
   }
 

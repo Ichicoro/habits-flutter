@@ -17,7 +17,7 @@ jobs:
           keystore-base64: ${{ secrets.ANDROID_RELEASE_KEY }}
           keystore-password: "${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}"
           # optionals
-          build-cmd: flutter build apk --release
+          build-cmd: flutter build apk --release --dart-define-from-file=env.prod.json
           working-directory: ./
           
       - name: Archive APK

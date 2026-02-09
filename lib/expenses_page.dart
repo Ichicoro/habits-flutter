@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:habits/add_expense_sheet.dart';
 import 'package:habits/service_locator.dart';
+import 'package:habits/types.dart';
 import 'package:habits/utils.dart';
 import 'package:watch_it/watch_it.dart';
 
@@ -43,7 +44,9 @@ class ExpensesPage extends StatelessWidget with WatchItMixin {
     var activeBoard = watchValue(
       (CurrentBoardRepository br) => br.currentBoard,
     );
-    var expenses = watchValue((CurrentBoardRepository br) => br.expenses);
+    var expenses = List<Expense>.from(
+      watchValue((CurrentBoardRepository br) => br.expenses),
+    )..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     var boards = watchValue((CurrentBoardRepository br) => br.boards);
 
     Future<void> pullRefresh() async {
@@ -110,13 +113,22 @@ class ExpensesPage extends StatelessWidget with WatchItMixin {
                 itemBuilder: (context, index) {
                   var expense = expenses[index];
                   return ListTile(
-                    leading: Icon(Icons.fastfood_rounded),
+                    leading: Text(
+                      expense.category?.emoji ?? '💸',
+                      style: TextStyle(fontSize: 24),
+                    ),
                     title: Text(expense.description ?? '???'),
                     subtitle: Text(
                       datetimeToLocalHRFormat(expense.createdAt.toLocal()),
                     ),
                     onTap: () {
-                      showAddExpenseSheet(context, expense: expense);
+                      showAddExpenseSheet(
+                        context,
+                        expense: expense,
+                        onSaved: () {
+                          pullRefresh();
+                        },
+                      );
                     },
                     trailing: MoneyTextSpan(amount: expense.amount),
                   );

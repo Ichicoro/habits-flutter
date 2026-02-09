@@ -7,6 +7,27 @@ import 'constants.dart' as Constants;
 
 final getIt = GetIt.instance;
 
+class CurrentUserRepository {
+  final ApiClient apiClient;
+
+  final currentUser = ValueNotifier<User?>(null);
+
+  CurrentUserRepository(this.apiClient) {
+    _loadCurrentUser();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    try {
+      currentUser.value = await apiClient.getSelf();
+      print("Loaded current user: ${currentUser.value?.username}");
+    } catch (e) {
+      if (kDebugMode) {
+        print('Failed to load current user: $e');
+      }
+    }
+  }
+}
+
 class CurrentBoardRepository {
   final ApiClient apiClient;
 
@@ -39,10 +60,13 @@ class CurrentBoardRepository {
 }
 
 Future<void> setupServiceLocator() async {
-  final apiClient = ApiClient(baseUrl: Constants.baseApiUrl);
+  final apiClient = ApiClient();
   await apiClient.init();
   getIt.registerSingleton<ApiClient>(apiClient);
   getIt.registerSingleton<CurrentBoardRepository>(
     CurrentBoardRepository(getIt<ApiClient>()),
+  );
+  getIt.registerSingleton<CurrentUserRepository>(
+    CurrentUserRepository(getIt<ApiClient>()),
   );
 }
