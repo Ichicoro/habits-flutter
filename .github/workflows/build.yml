@@ -26,3 +26,14 @@ jobs:
           name: release-apk
           # Try running the build locally with the build command to be sure of this path
           path: build/app/outputs/flutter-apk/app-release.apk
+      
+      - uses: cedvdb/action-flutter-build-web@v1
+        with:
+          build-cmd: flutter build web --release --dart-define-from-file=env.prod.json
+          working-directory: ./
+
+      - name: Archive Web
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-web
+          path: build/web
