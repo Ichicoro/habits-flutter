@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  build:
+  build-android:
     name: build
     runs-on: ubuntu-latest
     steps:
@@ -26,6 +26,12 @@ jobs:
           name: release-apk
           # Try running the build locally with the build command to be sure of this path
           path: build/app/outputs/flutter-apk/app-release.apk
+
+  build-web:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
       
       - uses: cedvdb/action-flutter-build-web@v1
         with:
