@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart' as google_fonts;
+import 'package:habits/api_client.dart';
 import 'package:habits/expenses_page.dart';
 import 'package:habits/login_view.dart';
 import 'package:habits/service_locator.dart';
@@ -143,11 +144,21 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   }
 }
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const Center(child: Text('Settings Screen'));
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(authProvider);
+    return Center(
+      child: TextButton(
+        onPressed: () async {
+          final apiClient = getIt<ApiClient>();
+          await ref.read(authProvider.notifier).logout();
+          apiClient.removeToken();
+        },
+        child: const Text("Logout"),
+      ),
+    );
   }
 }
