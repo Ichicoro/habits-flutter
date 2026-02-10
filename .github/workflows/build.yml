@@ -5,6 +5,21 @@ on:
     branches:
       - main
 
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: |-
+          The name of the release to create.
+          For example, "v12.345.67".
+        type: string
+        required: false
+      publish-github:
+        description: "Whether to publish the release on GitHub. If false, the release will
+          only be drafted."
+        type: boolean
+        required: false
+        default: true
+
 jobs:
   build-android:
     name: build
@@ -32,14 +47,56 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      
+
       - uses: cedvdb/action-flutter-build-web@v1
         with:
           build-cmd: flutter build web --release --dart-define-from-file=env.prod.json
           working-directory: ./
+      
+      - name: "zip web build"
+        shell: "bash"
+        run: |-
+          # Zip the web build to make it easier to download and upload as an artifact.
+          cd build/web
+          zip -r ../web.zip ./*
 
       - name: Archive Web
         uses: actions/upload-artifact@v4
         with:
           name: release-web
-          path: build/web
+          path: build/web.zip
+
+  publish-github:
+    name: "Draft GitHub release"
+    runs-on: ubuntu-slim
+  
+    # Draft release even if one of the prerequisites failed
+    if: ${{ !cancelled() && ( inputs.publish-github || github.event_name == 'push' ) }}
+    needs:
+      - build-web
+      - build-android
+
+    permissions:
+      contents: write  # Required to create a tag.
+
+    steps:
+      - # https://github.com/actions/download-artifact/releases/tag/v7.0.0
+        name: "Download all build artifacts"
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          path: dist/
+      - name: "List all downloaded files"
+        run: ls -R dist/
+      - # https://github.com/ncipollo/release-action/releases/tag/v1.20.0
+        # This action isn't by GitHub, but is one of the officialy recommended successors of https://github.com/actions/download-artifact .
+        name: "Draft GitHub release"
+        uses: ncipollo/release-action@b7eabc95ff50cbeeedec83973935c8f306dfcd0b
+        with:
+          tag: "${{ inputs.tag || github.sha }}"
+          draft: true
+          # If the release hasn't been published yet, update it.
+          allowUpdates: true
+          updateOnlyUnreleased: true
+          # Attach all build artifacts starting with owocr- .
+          artifacts: >-
+            dist/release-apk/app-release.apk,dist/release-web/web.zip
