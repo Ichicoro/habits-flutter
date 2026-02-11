@@ -18,6 +18,7 @@ dependencies:
   native_glass_navbar: ^1.0.1
   smooth_sheets: ^0.16.0
   watch_it: ^1.4.2
+  web: ^1.1.1
 
 dev_dependencies:
   flutter_test:

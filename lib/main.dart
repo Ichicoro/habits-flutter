@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart' as google_fonts;
@@ -22,29 +23,64 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    var themeData = ThemeData(
+      useMaterial3: true,
+      colorSchemeSeed: Colors.orange,
+      brightness: Brightness.dark,
+    );
+
     return MaterialApp(
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: Colors.orange,
-        brightness: Brightness.dark,
-        // or crimson
+      // theme: ThemeData(
+      //   useMaterial3: true,
+      //   colorSchemeSeed: Colors.orange,
+      //   brightness: Brightness.dark,
+      //   // or crimson
+      //   textTheme: google_fonts.GoogleFonts.youngSerifTextTheme(
+      //     Typography.englishLike2021.apply(
+      //       fontSizeFactor: kIsWeb ? 1.2 : (Platform.isMacOS ? 1.0 : 1.2),
+      //       bodyColor: themeData.colorScheme.onSurface,
+      //       displayColor: themeData.colorScheme.onSurface,
+      //     ),
+      //   ),
+      //   navigationBarTheme: const NavigationBarThemeData(height: 69),
+      //   appBarTheme: AppBarTheme(
+      //     centerTitle: true,
+      //     titleTextStyle: TextStyle(
+      //       fontFamily: 'BasteleurBold',
+      //       fontSize: 20,
+      //       fontWeight: FontWeight.w700,
+      //       color: themeData.colorScheme.onSurface,
+      //     ),
+      //     toolbarTextStyle: TextStyle(
+      //       fontFamily: 'BasteleurBold',
+      //       fontSize: 20,
+      //       fontWeight: FontWeight.w700,
+      //       color: themeData.colorScheme.onSurface,
+      //     ),
+      //   ),
+      // ),
+      theme: themeData.copyWith(
         textTheme: google_fonts.GoogleFonts.youngSerifTextTheme(
           Typography.englishLike2021.apply(
-            fontSizeFactor: Platform.isMacOS ? 1.0 : 1.2,
+            fontSizeFactor: kIsWeb ? 1.0 : (Platform.isMacOS ? 1.0 : 1.2),
+            bodyColor: themeData.colorScheme.onSurface,
+            displayColor: themeData.colorScheme.onSurface,
           ),
         ),
         navigationBarTheme: const NavigationBarThemeData(height: 69),
-        appBarTheme: const AppBarTheme(
+        appBarTheme: AppBarTheme(
           centerTitle: true,
           titleTextStyle: TextStyle(
             fontFamily: 'BasteleurBold',
             fontSize: 20,
             fontWeight: FontWeight.w700,
+            color: themeData.colorScheme.onSurface,
           ),
           toolbarTextStyle: TextStyle(
             fontFamily: 'BasteleurBold',
             fontSize: 20,
             fontWeight: FontWeight.w700,
+            color: themeData.colorScheme.onSurface,
           ),
         ),
       ),

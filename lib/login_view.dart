@@ -101,7 +101,7 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 16),
             TextField(
               controller: _baseUrlController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Base URL (optional)',
                 filled: true,
                 border: OutlineInputBorder(),
