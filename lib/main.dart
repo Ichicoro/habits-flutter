@@ -30,35 +30,6 @@ class MainApp extends StatelessWidget {
     );
 
     return MaterialApp(
-      // theme: ThemeData(
-      //   useMaterial3: true,
-      //   colorSchemeSeed: Colors.orange,
-      //   brightness: Brightness.dark,
-      //   // or crimson
-      //   textTheme: google_fonts.GoogleFonts.youngSerifTextTheme(
-      //     Typography.englishLike2021.apply(
-      //       fontSizeFactor: kIsWeb ? 1.2 : (Platform.isMacOS ? 1.0 : 1.2),
-      //       bodyColor: themeData.colorScheme.onSurface,
-      //       displayColor: themeData.colorScheme.onSurface,
-      //     ),
-      //   ),
-      //   navigationBarTheme: const NavigationBarThemeData(height: 69),
-      //   appBarTheme: AppBarTheme(
-      //     centerTitle: true,
-      //     titleTextStyle: TextStyle(
-      //       fontFamily: 'BasteleurBold',
-      //       fontSize: 20,
-      //       fontWeight: FontWeight.w700,
-      //       color: themeData.colorScheme.onSurface,
-      //     ),
-      //     toolbarTextStyle: TextStyle(
-      //       fontFamily: 'BasteleurBold',
-      //       fontSize: 20,
-      //       fontWeight: FontWeight.w700,
-      //       color: themeData.colorScheme.onSurface,
-      //     ),
-      //   ),
-      // ),
       theme: themeData.copyWith(
         textTheme: google_fonts.GoogleFonts.youngSerifTextTheme(
           Typography.englishLike2021.apply(
@@ -151,18 +122,18 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                               symbol: "gear",
                             ),
                           ],
-                          // actionButton: TabBarActionButton(
-                          //   symbol: "plus",
-                          //   onTap: () {
-                          //     // showAddExpenseSheet(context);
-                          //     // showCupertinoSheet(
-                          //     //   context: context,
-                          //     //   builder: (context) {
-                          //     //     return AddExpenseSheet();
-                          //     //   },
-                          //     // );
-                          //   },
-                          // ),
+                          actionButton: TabBarActionButton(
+                            symbol: "plus",
+                            onTap: () {
+                              // showAddExpenseSheet(context);
+                              // showCupertinoSheet(
+                              //   context: context,
+                              //   builder: (context) {
+                              //     return AddExpenseSheet();
+                              //   },
+                              // );
+                            },
+                          ),
                           currentIndex: _selectedIndex,
                           onTap: (index) {
                             setState(() {
