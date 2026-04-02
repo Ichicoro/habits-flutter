@@ -27,22 +27,32 @@ class _LoginScreenState extends State<LoginScreen> {
     apiClient = getIt.get<ApiClient>();
   }
 
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    _baseUrlController.dispose();
+    super.dispose();
+  }
+
   void handleLogin() async {
     // Handle login logic here
     setState(() {
       isLoading = true;
     });
     try {
+      final baseUrl = _baseUrlController.text.trim();
+      await apiClient.setBaseUrl(baseUrl.isEmpty ? null : baseUrl);
       await apiClient.login(_usernameController.text, _passwordController.text);
       setState(() {
         isLoading = false;
       });
       widget.onLoginSuccess();
     } on DioException catch (e) {
-      print(e);
       setState(() {
         isLoading = false;
       });
+      if (!mounted) return;
       if (e.response == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Login failed: Unknown error')),
@@ -105,7 +115,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 labelText: 'Base URL (optional)',
                 filled: true,
                 border: OutlineInputBorder(),
-                hint: Text(Constants.baseApiUrl),
+                hintText: Constants.baseApiUrl,
               ),
               obscureText: false,
             ),

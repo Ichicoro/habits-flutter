@@ -1,14 +1,14 @@
-import 'dart:io';
-
-import 'package:flutter/foundation.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart' as google_fonts;
 import 'package:habits/api_client.dart';
 import 'package:habits/expenses_page.dart';
 import 'package:habits/login_view.dart';
 import 'package:habits/service_locator.dart';
 import 'package:habits/providers/auth_provider.dart';
+import 'package:habits/providers/settings_provider.dart';
+import 'package:habits/settings_page.dart';
+import 'package:habits/theme/mono_theme.dart';
 import 'package:native_glass_navbar/native_glass_navbar.dart';
 import 'constants.dart' as Constants;
 
@@ -18,43 +18,20 @@ void main() async {
   runApp(const ProviderScope(child: MainApp()));
 }
 
-class MainApp extends StatelessWidget {
+class MainApp extends ConsumerWidget {
   const MainApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    var themeData = ThemeData(
-      useMaterial3: true,
-      colorSchemeSeed: Colors.orange,
-      brightness: Brightness.dark,
-    );
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(settingsProvider);
 
     return MaterialApp(
-      theme: themeData.copyWith(
-        textTheme: google_fonts.GoogleFonts.youngSerifTextTheme(
-          Typography.englishLike2021.apply(
-            fontSizeFactor: kIsWeb ? 1.0 : (Platform.isMacOS ? 1.0 : 1.2),
-            bodyColor: themeData.colorScheme.onSurface,
-            displayColor: themeData.colorScheme.onSurface,
-          ),
-        ),
-        navigationBarTheme: const NavigationBarThemeData(height: 69),
-        appBarTheme: AppBarTheme(
-          centerTitle: true,
-          titleTextStyle: TextStyle(
-            fontFamily: 'BasteleurBold',
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: themeData.colorScheme.onSurface,
-          ),
-          toolbarTextStyle: TextStyle(
-            fontFamily: 'BasteleurBold',
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: themeData.colorScheme.onSurface,
-          ),
-        ),
-      ),
+      theme: monoTheme(dark: false),
+      darkTheme: monoTheme(dark: true, oled: settings.oledDarkMode),
+      themeMode: settings.themeMode == ThemeMode.dark
+          ? ThemeMode.dark
+          : ThemeMode.system,
+      // debugShowCheckedModeBanner: false,
       home: const MainScreen(),
     );
   }
@@ -147,25 +124,6 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           body: [const ExpensesPage(), const SettingsScreen()][_selectedIndex],
         );
       },
-    );
-  }
-}
-
-class SettingsScreen extends ConsumerWidget {
-  const SettingsScreen({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    ref.watch(authProvider);
-    return Center(
-      child: TextButton(
-        onPressed: () async {
-          final apiClient = getIt<ApiClient>();
-          await ref.read(authProvider.notifier).logout();
-          apiClient.removeToken();
-        },
-        child: const Text("Logout"),
-      ),
     );
   }
 }

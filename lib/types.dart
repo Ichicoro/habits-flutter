@@ -89,6 +89,17 @@ class User {
     );
   }
 
+  String get name {
+    if (firstName != null) {
+      if (lastName != null) {
+        return '$firstName $lastName';
+      }
+      return firstName!;
+    } else {
+      return username;
+    }
+  }
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'username': username,
@@ -299,7 +310,7 @@ class ExpenseSplit {
 
   Map<String, dynamic> toJson() => {
     'id': id,
-    'user': user,
+    'user': user.id,
     'share_amount': shareAmount,
     'percentage': percentage,
   };
@@ -364,7 +375,7 @@ class Expense {
       payer: User.fromJson(json['payer']),
       category: json['category'] != null
           ? ExpenseCategory.fromJson(json['category'])
-          : null as ExpenseCategory?,
+          : null,
     );
   }
 

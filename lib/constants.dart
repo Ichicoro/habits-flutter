@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:web/web.dart' as web;
+import "package:universal_html/html.dart" as web;
 
 final String baseApiUrl = kIsWeb
     ? web.window.location.href

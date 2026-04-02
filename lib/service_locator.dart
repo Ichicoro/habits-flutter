@@ -3,7 +3,6 @@ import 'package:get_it/get_it.dart';
 import 'package:watch_it/watch_it.dart';
 import 'package:habits/api_client.dart';
 import 'package:habits/types.dart';
-import 'constants.dart' as Constants;
 
 final getIt = GetIt.instance;
 
@@ -19,7 +18,6 @@ class CurrentUserRepository {
   Future<void> _loadCurrentUser() async {
     try {
       currentUser.value = await apiClient.getSelf();
-      print("Loaded current user: ${currentUser.value?.username}");
     } catch (e) {
       if (kDebugMode) {
         print('Failed to load current user: $e');
@@ -38,23 +36,43 @@ class CurrentBoardRepository {
   CurrentBoardRepository(this.apiClient);
 
   Future<void> updateData({bool forceReload = false}) async {
-    // TODO: Handle errors
-    if (boards.value.isEmpty || forceReload) {
-      boards.value = await apiClient.getBoards();
-    }
-    if (boards.value.isNotEmpty) {
-      currentBoard.value = boards.value[0];
-    }
-    if (currentBoard.value != null &&
-        currentBoard.value!.id.isNotEmpty &&
-        (expenses.value.isEmpty || forceReload)) {
-      expenses.value = await apiClient.getExpenses(currentBoard.value!.id);
+    try {
+      if (boards.value.isEmpty || forceReload) {
+        boards.value = await apiClient.getBoards();
+      }
+      if (boards.value.isNotEmpty) {
+        currentBoard.value = boards.value[0];
+      }
+      if (currentBoard.value != null &&
+          currentBoard.value!.id.isNotEmpty &&
+          (expenses.value.isEmpty || forceReload)) {
+        expenses.value = await apiClient.getExpenses(currentBoard.value!.id)
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Failed to update data: $e');
+      }
     }
   }
 
   Future<void> updateExpenses() async {
     if (currentBoard.value != null && currentBoard.value!.id.isNotEmpty) {
-      expenses.value = await apiClient.getExpenses(currentBoard.value!.id);
+      expenses.value = await apiClient.getExpenses(currentBoard.value!.id)
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    }
+  }
+
+  Future<void> switchBoard(String boardId) async {
+    try {
+      boards.value = await apiClient.getBoards();
+      var board = boards.value.firstWhere((b) => b.id == boardId);
+      currentBoard.value = board;
+      await updateExpenses();
+    } catch (e) {
+      if (kDebugMode) {
+        print('Failed to switch board: $e');
+      }
     }
   }
 }
@@ -64,9 +82,9 @@ Future<void> setupServiceLocator() async {
   await apiClient.init();
   getIt.registerSingleton<ApiClient>(apiClient);
   getIt.registerSingleton<CurrentBoardRepository>(
-    CurrentBoardRepository(getIt<ApiClient>()),
+    CurrentBoardRepository(apiClient),
   );
   getIt.registerSingleton<CurrentUserRepository>(
-    CurrentUserRepository(getIt<ApiClient>()),
+    CurrentUserRepository(apiClient),
   );
 }

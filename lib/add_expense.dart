@@ -1,10 +1,12 @@
 // Stateful widget
 import 'package:dio/dio.dart';
+import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
 import 'package:habits/api_client.dart';
 import 'package:habits/service_locator.dart';
 import 'package:habits/types.dart';
 import 'package:habits/utils.dart';
+import 'package:material_segmented_list/material_segmented_list.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
 import 'package:watch_it/watch_it.dart';
 
@@ -30,6 +32,19 @@ void showAddExpenseSheet(
           child: AddExpenseSheet(expense: expense, onSaved: onSaved),
         ),
       ),
+    ),
+  );
+}
+
+void showEditExpensePage(
+  BuildContext context, {
+  Expense? expense,
+  Function? onSaved,
+}) {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => AddExpenseSheet(expense: expense, onSaved: onSaved),
     ),
   );
 }
@@ -60,63 +75,60 @@ class ParticipantsSection extends StatelessWidget {
       );
     }
 
-    return Column(
-      children: participants
-          .map(
-            (member) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                children: [
-                  Checkbox(
-                    value: member.isActive,
-                    onChanged: (val) {
-                      member.isActive = val ?? false;
-                      onParticipantChanged();
-                    },
+    return SegmentedListSection(
+      children: [
+        for (var member in participants)
+          SegmentedListTile(
+            leading: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Checkbox(
+                  visualDensity: VisualDensity.compact,
+                  value: member.isActive,
+                  onChanged: (val) {
+                    member.isActive = val ?? false;
+                    onParticipantChanged();
+                  },
+                ),
+                Text(
+                  member.user.firstName != null &&
+                          member.user.firstName!.isNotEmpty
+                      ? member.user.firstName!
+                      : member.user.username,
+                ),
+              ],
+            ),
+            trailing: SizedBox(
+              width: 100,
+              child: TextField(
+                controller: member.controller,
+                keyboardType: TextInputType.numberWithOptions(
+                  decimal: true,
+                  signed: false,
+                ),
+                decoration: InputDecoration(
+                  labelText: splitType == SplitTypeEnum.percentage
+                      ? "Percent"
+                      : "Amount",
+                  isDense: true,
+                  enabled: splitType != SplitTypeEnum.equal,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
                   ),
-                  Expanded(
-                    child: Text(
-                      member.user.firstName != null &&
-                              member.user.firstName!.isNotEmpty
-                          ? member.user.firstName!
-                          : member.user.username,
-                    ),
-                  ),
-                  SizedBox(
-                    width: 100,
-                    child: TextField(
-                      controller: member.controller,
-                      keyboardType: TextInputType.numberWithOptions(
-                        decimal: true,
-                        signed: false,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: splitType == SplitTypeEnum.percentage
-                            ? "Percent"
-                            : "Amount",
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                        enabled: splitType != SplitTypeEnum.equal,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 6,
-                        ),
-                      ),
-                      onChanged: (value) {
-                        if (splitType == SplitTypeEnum.percentage) {
-                          member.percentage = double.tryParse(value) ?? 0.0;
-                        } else {
-                          member.amount = double.tryParse(value) ?? 0.0;
-                        }
-                        onParticipantChanged();
-                      },
-                    ),
-                  ),
-                ],
+                ),
+                onChanged: (value) {
+                  if (splitType == SplitTypeEnum.percentage) {
+                    member.percentage = double.tryParse(value) ?? 0.0;
+                  } else {
+                    member.amount = double.tryParse(value) ?? 0.0;
+                  }
+                  onParticipantChanged();
+                },
               ),
             ),
-          )
-          .toList(),
+          ),
+      ],
     );
   }
 }
@@ -168,13 +180,13 @@ class Participants {
 }
 
 class AddExpenseSheet extends WatchingStatefulWidget {
-  Expense? expense;
-  Function? onSaved;
-  AddExpenseSheet({super.key, this.expense, this.onSaved});
+  final Expense? expense;
+  final Function? onSaved;
+
+  const AddExpenseSheet({super.key, this.expense, this.onSaved});
 
   @override
-  State<AddExpenseSheet> createState() =>
-      _AddExpenseSheetState(expense: expense);
+  State<AddExpenseSheet> createState() => _AddExpenseSheetState();
 }
 
 class _AddExpenseSheetState extends State<AddExpenseSheet> {
@@ -189,20 +201,17 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
 
   bool isLoading = false;
 
-  Expense? expense;
-
-  _AddExpenseSheetState({this.expense});
-
   @override
   void initState() {
     super.initState();
     apiClient = getIt.get<ApiClient>();
     currentBoard = getIt.get<CurrentBoardRepository>().currentBoard.value!;
-    if (expense != null) {
-      _amountController.text = expense!.amount.toStringAsFixed(2);
-      _descriptionController.text = expense!.description!;
-      _selectedCategory = expense!.category;
-      _splitType = expense!.splitType;
+    _initializeParticipants(currentBoard);
+    if (widget.expense != null) {
+      _amountController.text = widget.expense!.amount.toStringAsFixed(2);
+      _descriptionController.text = widget.expense!.description ?? '';
+      _selectedCategory = widget.expense!.category;
+      _splitType = widget.expense!.splitType;
     }
     // Listen for amount changes to recalculate participant splits
     _amountController.addListener(handleTextChange);
@@ -254,8 +263,8 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
       p.dispose();
     }
 
-    if (expense?.splits != null && expense!.splits.isNotEmpty) {
-      _participants = expense!.splits
+    if (widget.expense?.splits != null && widget.expense!.splits.isNotEmpty) {
+      _participants = widget.expense!.splits
           .map(
             (split) => Participants(
               user: split.user,
@@ -267,7 +276,9 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
           .toList();
       _participants += board.users
           .where(
-            (user) => !expense!.splits.any((split) => split.user.id == user.id),
+            (user) => !widget.expense!.splits.any(
+              (split) => split.user.id == user.id,
+            ),
           )
           .map(
             (user) => Participants(
@@ -367,13 +378,15 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
               .toList(),
         }, widget.expense!.id);
       } on DioException catch (e) {
-        print((e as DioException).response?.data);
-        // Handle error
+        setState(() {
+          isLoading = false;
+        });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Failed to update expense: $e')),
           );
         }
+        return;
       }
     } else {
       // Create new expense
@@ -404,7 +417,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
       Navigator.of(context).pop();
       showSnackBar(
         context,
-        Text(expense != null ? "Expense updated!" : "Expense saved!"),
+        Text(widget.expense != null ? "Expense updated!" : "Expense saved!"),
         clearExisting: true,
       );
     }
@@ -419,16 +432,16 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
 
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false,
-        primary: false,
+        // automaticallyImplyLeading: false,
+        // primary: false,
         centerTitle: true,
-        title: Text(expense != null ? 'Edit expense' : 'New expense'),
+        title: Text(widget.expense != null ? 'Edit expense' : 'New expense'),
         actions: [
           TextButton(
             onPressed: _sendDataUpdate,
             child: const Text(
               "Save",
-              style: TextStyle(fontFamily: "BasteleurBold"),
+              // style: TextStyle(fontFamily: "BasteleurBold"),
             ),
           ),
         ],
@@ -463,6 +476,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                           Row(
                             children: [
                               Expanded(
+                                flex: 2,
                                 child: TextField(
                                   controller: _amountController,
                                   keyboardType:
@@ -485,45 +499,69 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                               ),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: DropdownButtonFormField<String>(
+                                flex: 3,
+                                child: DropdownButtonFormField2(
                                   isExpanded: true,
-                                  initialValue: _selectedCategory?.id,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Category',
-                                    border: OutlineInputBorder(),
+                                  disabledHint: Text(
+                                    "No categories",
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium!
+                                        .copyWith(fontStyle: FontStyle.italic),
                                   ),
-                                  onSaved: (newValue) => {
-                                    _selectedCategory = currentBoard
-                                        ?.expenseCategories
-                                        .firstWhere(
-                                          (cat) => cat.id == newValue,
-                                        ),
-                                  },
+                                  valueListenable: ValueNotifier(
+                                    _selectedCategory?.id,
+                                  ),
+                                  decoration: InputDecoration(
+                                    label: Padding(
+                                      padding: EdgeInsetsGeometry.only(
+                                        left: 16,
+                                      ),
+                                      child: Text(
+                                        "Category",
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.bodyLarge,
+                                      ),
+                                    ),
+                                    border: OutlineInputBorder(),
+                                    contentPadding: EdgeInsets.symmetric(
+                                      vertical: 12,
+                                      horizontal: 0,
+                                    ),
+                                  ),
+                                  dropdownStyleData: DropdownStyleData(
+                                    // maxHeight: 200,
+                                    padding: null,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
                                   items: [
-                                    const DropdownMenuItem(
+                                    DropdownItem(
                                       value: null,
                                       child: Text("None"),
                                     ),
-                                    ...(currentBoard?.expenseCategories
-                                            .map(
-                                              (cat) => DropdownMenuItem<String>(
-                                                value: cat.id,
-                                                child: Text(
-                                                  "${cat.emoji} ${cat.name}",
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                            )
-                                            .toList() ??
-                                        []),
+                                    for (var category
+                                        in currentBoard?.expenseCategories ??
+                                            <ExpenseCategory>[])
+                                      DropdownItem(
+                                        value: category.id,
+                                        child: Text(
+                                          "${category.emoji} ${category.name}",
+                                        ),
+                                      ),
                                   ],
+                                  style: Theme.of(context).textTheme.bodyLarge,
                                   onChanged: (value) {
-                                    // Handle category selection
                                     setState(() {
-                                      _selectedCategory = currentBoard
-                                          ?.expenseCategories
-                                          .firstWhere((cat) => cat.id == value);
+                                      if (value == null) {
+                                        _selectedCategory = null;
+                                      } else {
+                                        _selectedCategory = currentBoard
+                                            ?.expenseCategories
+                                            .firstWhere((c) => c.id == value);
+                                      }
                                     });
                                   },
                                 ),
@@ -533,11 +571,14 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text(
-                                "Participants",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontFamily: "BasteleurBold",
+                              Padding(
+                                padding: EdgeInsetsGeometry.only(left: 4),
+                                child: Text(
+                                  "Participants",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontFamily: "BasteleurBold",
+                                  ),
                                 ),
                               ),
                               SizedBox(
@@ -577,30 +618,13 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                               ),
                             ],
                           ),
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.surfaceContainer,
-                            ),
-                            child: currentBoard != null
-                                ? Builder(
-                                    builder: (context) {
-                                      if (_participants.isEmpty) {
-                                        _initializeParticipants(currentBoard);
-                                      }
-                                      return ParticipantsSection(
-                                        participants: _participants,
-                                        splitType: _splitType,
-                                        onParticipantChanged:
-                                            _onParticipantChanged,
-                                      );
-                                    },
-                                  )
-                                : const SizedBox.shrink(),
-                          ),
+                          currentBoard != null
+                              ? ParticipantsSection(
+                                  participants: _participants,
+                                  splitType: _splitType,
+                                  onParticipantChanged: _onParticipantChanged,
+                                )
+                              : const SizedBox.shrink(),
                         ],
                       ),
                     ),
@@ -609,7 +633,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                         child: Container(
                           color: Theme.of(
                             context,
-                          ).colorScheme.surfaceContainer.withOpacity(0.6),
+                          ).colorScheme.surfaceContainer.withValues(alpha: 0.6),
                           child: const Center(
                             child: CircularProgressIndicator(),
                           ),

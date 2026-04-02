@@ -1,16 +1,23 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:habits/api_client.dart';
 import 'package:habits/service_locator.dart';
+import 'package:habits/types.dart';
 
-final authProvider = StateNotifierProvider<AuthNotifier, AsyncValue<bool>>((
-  ref,
-) {
-  return AuthNotifier();
+final currentUserProvider = FutureProvider<User>((ref) async {
+  ref.watch(authProvider);
+  final apiClient = getIt.get<ApiClient>();
+  return apiClient.getSelf();
 });
 
-class AuthNotifier extends StateNotifier<AsyncValue<bool>> {
-  AuthNotifier() : super(const AsyncValue.loading()) {
+final authProvider = NotifierProvider<AuthNotifier, AsyncValue<bool>>(
+  AuthNotifier.new,
+);
+
+class AuthNotifier extends Notifier<AsyncValue<bool>> {
+  @override
+  AsyncValue<bool> build() {
     _init();
+    return const AsyncValue.loading();
   }
 
   Future<void> _init() async {
@@ -38,7 +45,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<bool>> {
   Future<void> logout() async {
     try {
       final apiClient = getIt.get<ApiClient>();
-      apiClient.removeToken();
+      await apiClient.removeToken();
       state = const AsyncValue.data(false);
     } catch (e, st) {
       state = AsyncValue.error(e, st);

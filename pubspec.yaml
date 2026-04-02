@@ -10,15 +10,19 @@ dependencies:
   flutter:
     sdk: flutter
   dio: ^5.9.0
-  google_fonts: ^7.0.2
+  google_fonts: ^8.0.1
   shared_preferences: ^2.5.4
-  get_it: ^7.6.0
-  flutter_riverpod: ^2.4.0
+  flutter_secure_storage: ^9.0.0
+  get_it: ^9.2.0
+  flutter_riverpod: ^3.2.1
   intl: ^0.20.2
   native_glass_navbar: ^1.0.1
   smooth_sheets: ^0.16.0
-  watch_it: ^1.4.2
-  web: ^1.1.1
+  watch_it: ^2.4.1
+  universal_html: ^2.3.0
+  material_segmented_list: ^1.0.5
+  dropdown_button2: ^3.0.0
+  full_screen_back_gesture: ^0.0.2
 
 dev_dependencies:
   flutter_test:

@@ -1,5 +1,6 @@
 import 'package:habits/types.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'constants.dart' as Constants;
 
@@ -7,6 +8,7 @@ class ApiClient {
   late String baseUrl;
   late Dio _client;
   late SharedPreferencesAsync _prefs;
+  final _secureStorage = const FlutterSecureStorage();
 
   ApiClient() {
     _prefs = SharedPreferencesAsync();
@@ -19,7 +21,7 @@ class ApiClient {
   }
 
   Future<void> init() async {
-    final token = await _prefs.getString('auth_token');
+    final token = await _secureStorage.read(key: 'auth_token');
     baseUrl = await _prefs.getString('base_url') ?? Constants.baseApiUrl;
     _client.options.baseUrl = baseUrl;
     if (token != null) {
@@ -28,19 +30,20 @@ class ApiClient {
   }
 
   Future<bool> hasValidToken() async {
-    final token = await _prefs.getString('auth_token');
+    final token = await _secureStorage.read(key: 'auth_token');
     return token != null;
   }
 
-  void removeToken() {
+  Future<void> removeToken() async {
     _client.options.headers.remove('Authorization');
+    await _secureStorage.delete(key: 'auth_token');
   }
 
   void setToken(String token) {
     _client.options.headers['Authorization'] = 'Token $token';
   }
 
-  void setBaseUrl(String? url) async {
+  Future<void> setBaseUrl(String? url) async {
     baseUrl = url ?? Constants.baseApiUrl;
     _client.options.baseUrl = url ?? Constants.baseApiUrl;
     if (url != null) {
@@ -51,36 +54,29 @@ class ApiClient {
   }
 
   Future<void> _handleAuthFailure() async {
-    removeToken();
-    await _prefs.remove('auth_token');
+    await removeToken();
   }
 
   Future<User> getSelf() async {
     try {
       final response = await _client.get('/api/users/me/');
-      print("Loaded user: ${response.data}");
       return User.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) {
         await _handleAuthFailure();
       }
-      print(e.requestOptions.uri);
       throw Exception('Failed to fetch current user: ${e.response}');
     }
   }
 
   Future<void> login(String username, String password) async {
-    try {
-      final response = await _client.post(
-        '/api/auth/login/',
-        data: {'username': username, 'password': password},
-      );
-      final token = response.data['token'] as String;
-      setToken(token);
-      await _prefs.setString('auth_token', token);
-    } on DioException catch (e) {
-      rethrow;
-    }
+    final response = await _client.post(
+      '/api/auth/login/',
+      data: {'username': username, 'password': password},
+    );
+    final token = response.data['token'] as String;
+    setToken(token);
+    await _secureStorage.write(key: 'auth_token', value: token);
   }
 
   // Boards
@@ -94,7 +90,6 @@ class ApiClient {
       if (e.response?.statusCode == 401) {
         await _handleAuthFailure();
       }
-      print(e.requestOptions.uri);
       throw Exception('Failed to fetch boards: ${e.response}');
     }
   }
@@ -234,7 +229,6 @@ class ApiClient {
       if (e.response?.statusCode == 401) {
         await _handleAuthFailure();
       }
-      print(e.response!.data);
       throw Exception('Failed to create expense: ${e.message}');
     }
   }
@@ -254,7 +248,6 @@ class ApiClient {
         await _handleAuthFailure();
       }
       rethrow;
-      // throw Exception('Failed to update expense: ${e.message}');
     }
   }
 
