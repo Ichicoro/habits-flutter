@@ -1,3 +1,4 @@
+import 'package:drops/drops.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -6,6 +7,15 @@ import 'package:material_segmented_list/material_segmented_list.dart';
 String datetimeToLocalHRFormat(DateTime dt) {
   // Returns a human-readable local date string like "Aug 20, 2025"
   return DateFormat.yMMMEd().format(dt);
+}
+
+void showDropAlert(BuildContext context, {required String title}) {
+  Drops.show(context, title: title);
+}
+
+Color tileColorForAlert(BuildContext context) {
+  return Theme.of(context).colorScheme.primary.withValues(alpha: 0.08);
+  // return Theme.of(context).hintColor.withValues(alpha: 0.1);
 }
 
 void showSnackBar(
@@ -90,20 +100,19 @@ void showConfirmationDialog(
                     dense: true,
                     title: Center(child: Text("Cancel")),
                     onTap: () => Navigator.of(context).pop(),
-                    tileColor:
-                        (Theme.of(context).colorScheme.brightness ==
-                                    Brightness.light
-                                ? Colors.black
-                                : Colors.white)
-                            .withValues(alpha: 0.1),
+                    tileColor: tileColorForAlert(context),
                     minVerticalPadding: 0,
                   ),
                   SegmentedListTile(
                     visualDensity: VisualDensity.compact,
                     dense: true,
                     title: Center(child: Text(confirmText)),
-                    tileColor: Colors.redAccent,
-                    textColor: Colors.black,
+                    tileColor: isDestructive
+                        ? Colors.redAccent
+                        : Theme.of(context).colorScheme.primary,
+                    textColor: isDestructive
+                        ? Colors.black
+                        : Theme.of(context).colorScheme.onPrimary,
                     minVerticalPadding: 0,
                     onTap: () async {
                       await onConfirm();

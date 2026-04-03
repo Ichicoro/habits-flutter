@@ -1,11 +1,10 @@
 // Stateful widget
 import 'package:dio/dio.dart';
-import 'package:dropdown_button2/dropdown_button2.dart';
+import 'package:drops/drops.dart';
 import 'package:flutter/material.dart';
 import 'package:habits/api_client.dart';
 import 'package:habits/service_locator.dart';
 import 'package:habits/types.dart';
-import 'package:habits/utils.dart';
 import 'package:material_segmented_list/material_segmented_list.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
 import 'package:watch_it/watch_it.dart';
@@ -53,12 +52,14 @@ class ParticipantsSection extends StatelessWidget {
   final List<Participants> participants;
   final SplitTypeEnum splitType;
   final VoidCallback onParticipantChanged;
+  final Function(SplitTypeEnum)? onSplitTypeChanged;
 
   const ParticipantsSection({
     super.key,
     required this.participants,
     required this.splitType,
     required this.onParticipantChanged,
+    this.onSplitTypeChanged,
   });
 
   @override
@@ -77,24 +78,51 @@ class ParticipantsSection extends StatelessWidget {
 
     return SegmentedListSection(
       children: [
+        if (onSplitTypeChanged != null)
+          SegmentedListTile(
+            minVerticalPadding: 2,
+            title: SegmentedButton(
+              segments: [
+                ButtonSegment(
+                  value: SplitTypeEnum.equal,
+                  label: const Text("Equal"),
+                ),
+                ButtonSegment(
+                  value: SplitTypeEnum.percentage,
+                  label: const Text("Percent"),
+                ),
+                ButtonSegment(
+                  value: SplitTypeEnum.amount,
+                  label: const Text("Amount"),
+                ),
+              ],
+              selected: {splitType},
+              onSelectionChanged: (p0) => onSplitTypeChanged!(p0.first),
+            ),
+          ),
         for (var member in participants)
           SegmentedListTile(
             leading: Row(
               mainAxisSize: MainAxisSize.min,
+              spacing: 10,
               children: [
-                Checkbox(
-                  visualDensity: VisualDensity.compact,
-                  value: member.isActive,
-                  onChanged: (val) {
-                    member.isActive = val ?? false;
-                    onParticipantChanged();
-                  },
+                SizedBox(
+                  width: 24,
+                  child: Checkbox(
+                    visualDensity: VisualDensity.compact,
+                    value: member.isActive,
+                    onChanged: (val) {
+                      member.isActive = val ?? false;
+                      onParticipantChanged();
+                    },
+                  ),
                 ),
                 Text(
                   member.user.firstName != null &&
                           member.user.firstName!.isNotEmpty
                       ? member.user.firstName!
                       : member.user.username,
+                  style: Theme.of(context).textTheme.bodyLarge,
                 ),
               ],
             ),
@@ -415,10 +443,10 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
     });
     if (mounted) {
       Navigator.of(context).pop();
-      showSnackBar(
+      Drops.show(
         context,
-        Text(widget.expense != null ? "Expense updated!" : "Expense saved!"),
-        clearExisting: true,
+        title: widget.expense != null ? "Expense updated!" : "Expense saved!",
+        icon: Icons.save_rounded,
       );
     }
     widget.onSaved?.call();
@@ -500,59 +528,32 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                               const SizedBox(width: 12),
                               Expanded(
                                 flex: 3,
-                                child: DropdownButtonFormField2(
-                                  isExpanded: true,
-                                  disabledHint: Text(
-                                    "No categories",
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium!
-                                        .copyWith(fontStyle: FontStyle.italic),
-                                  ),
-                                  valueListenable: ValueNotifier(
-                                    _selectedCategory?.id,
-                                  ),
-                                  decoration: InputDecoration(
-                                    label: Padding(
-                                      padding: EdgeInsetsGeometry.only(
-                                        left: 16,
-                                      ),
-                                      child: Text(
-                                        "Category",
-                                        style: Theme.of(
-                                          context,
-                                        ).textTheme.bodyLarge,
-                                      ),
-                                    ),
+                                child: DropdownButtonFormField<String?>(
+                                  initialValue: _selectedCategory?.id,
+                                  borderRadius: BorderRadius.circular(12),
+                                  decoration: const InputDecoration(
+                                    labelText: "Category",
                                     border: OutlineInputBorder(),
                                     contentPadding: EdgeInsets.symmetric(
-                                      vertical: 12,
-                                      horizontal: 0,
-                                    ),
-                                  ),
-                                  dropdownStyleData: DropdownStyleData(
-                                    // maxHeight: 200,
-                                    padding: null,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(12),
+                                      vertical: 10,
+                                      horizontal: 14,
                                     ),
                                   ),
                                   items: [
-                                    DropdownItem(
+                                    const DropdownMenuItem<String?>(
                                       value: null,
                                       child: Text("None"),
                                     ),
                                     for (var category
                                         in currentBoard?.expenseCategories ??
                                             <ExpenseCategory>[])
-                                      DropdownItem(
+                                      DropdownMenuItem<String?>(
                                         value: category.id,
                                         child: Text(
                                           "${category.emoji} ${category.name}",
                                         ),
                                       ),
                                   ],
-                                  style: Theme.of(context).textTheme.bodyLarge,
                                   onChanged: (value) {
                                     setState(() {
                                       if (value == null) {
@@ -568,7 +569,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                               ),
                             ],
                           ),
-                          Row(
+                          /* Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Padding(
@@ -585,6 +586,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                                 width: 150,
                                 child: DropdownButtonFormField<String>(
                                   initialValue: _splitType.value,
+                                  borderRadius: BorderRadius.circular(12),
                                   decoration: const InputDecoration(
                                     labelText: "Split type",
                                     border: OutlineInputBorder(),
@@ -617,12 +619,17 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                                 ),
                               ),
                             ],
-                          ),
+                          ), */
                           currentBoard != null
                               ? ParticipantsSection(
                                   participants: _participants,
                                   splitType: _splitType,
                                   onParticipantChanged: _onParticipantChanged,
+                                  onSplitTypeChanged: (splitType) {
+                                    setState(() {
+                                      _splitType = splitType;
+                                    });
+                                  },
                                 )
                               : const SizedBox.shrink(),
                         ],

@@ -78,8 +78,7 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
       onInverseSurface: c.bg,
       inversePrimary: c.bg,
     ),
-    // remove "Material feel"
-    splashFactory: NoSplash.splashFactory,
+    splashFactory: InkSparkle.splashFactory,
     highlightColor: Colors.transparent,
     dividerColor: c.outline,
     scaffoldBackgroundColor: c.bg,
@@ -159,6 +158,24 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
     elevatedButtonTheme: ElevatedButtonThemeData(style: buttonStyle),
     filledButtonTheme: FilledButtonThemeData(style: buttonStyle),
     dividerTheme: DividerThemeData(space: 0, thickness: 1, color: c.outline),
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        padding: const WidgetStatePropertyAll(
+          EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        ),
+        backgroundColor: WidgetStateProperty.fromMap({
+          WidgetState.selected: c.text.withValues(alpha: 0.08),
+          WidgetState.hovered: c.text.withValues(alpha: 0.08),
+          WidgetState.focused: c.text.withValues(alpha: 0.12),
+        }),
+        foregroundColor: WidgetStatePropertyAll(c.text),
+        shape: const WidgetStatePropertyAll(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+          ),
+        ),
+      ),
+    ),
     listTileTheme: ListTileThemeData(
       dense: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -205,7 +222,7 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
         outline: c.outline,
         text: c.text,
         textMuted: c.textMuted,
-        splashFactory: NoSplash.splashFactory,
+        splashFactory: InkSparkle.splashFactory,
       ),
     ],
   );
