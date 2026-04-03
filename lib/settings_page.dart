@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:habits/api_client.dart';
 import 'package:habits/providers/auth_provider.dart';
 import 'package:habits/providers/settings_provider.dart';
 import 'package:habits/service_locator.dart';

@@ -11,10 +11,13 @@ import 'package:habits/settings_page.dart';
 import 'package:habits/theme/mono_theme.dart';
 import 'package:native_glass_navbar/native_glass_navbar.dart';
 import 'constants.dart' as Constants;
+import 'package:flutter/services.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await setupServiceLocator();
+  // make flutter draw behind navigation bar
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   runApp(const ProviderScope(child: MainApp()));
 }
 
@@ -85,7 +88,14 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           ],
         );
 
-        return Scaffold(
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: SystemUiOverlayStyle(
+            systemNavigationBarColor: Colors.transparent,
+            systemNavigationBarContrastEnforced: false,
+            systemStatusBarContrastEnforced: false,
+            statusBarColor: Colors.transparent,
+          ),
+          child: Scaffold(
           bottomNavigationBar:
               (Constants.enableLiquidGlassBar
                       ? (
@@ -122,6 +132,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                       : fallbackNavbar)
                   as Widget,
           body: [const ExpensesPage(), const SettingsScreen()][_selectedIndex],
+        ),
         );
       },
     );

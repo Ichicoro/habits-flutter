@@ -48,6 +48,25 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
     shape: const WidgetStatePropertyAll(StadiumBorder()),
   );
 
+  final textTheme = google_fonts.GoogleFonts.rubikTextTheme(
+    Typography.englishLike2021
+        .apply(
+          fontSizeFactor: kIsWeb ? 1.0 : (Platform.isMacOS ? 1.0 : 1.2),
+          bodyColor: c.text,
+          displayColor: c.text,
+        )
+        .copyWith(
+          displayLarge: const TextStyle(
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.5,
+          ),
+          titleMedium: const TextStyle(fontWeight: FontWeight.w600),
+          bodyLarge: TextStyle(color: c.text, fontWeight: FontWeight.w500),
+          bodyMedium: TextStyle(color: c.text, fontWeight: FontWeight.w500),
+          bodySmall: TextStyle(color: c.textMuted),
+        ),
+  );
+
   final base = ThemeData(
     useMaterial3: true,
     brightness: isDark ? Brightness.dark : Brightness.light,
@@ -106,24 +125,7 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
     //       bodyMedium: TextStyle(color: c.text),
     //       bodySmall: TextStyle(color: c.textMuted),
     //     ),
-    textTheme: google_fonts.GoogleFonts.rubikTextTheme(
-      Typography.englishLike2021
-          .apply(
-            fontSizeFactor: kIsWeb ? 1.0 : (Platform.isMacOS ? 1.0 : 1.2),
-            bodyColor: c.text,
-            displayColor: c.text,
-          )
-          .copyWith(
-            displayLarge: const TextStyle(
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.5,
-            ),
-            titleMedium: const TextStyle(fontWeight: FontWeight.w600),
-            bodyLarge: TextStyle(color: c.text, fontWeight: FontWeight.w500),
-            bodyMedium: TextStyle(color: c.text, fontWeight: FontWeight.w500),
-            bodySmall: TextStyle(color: c.textMuted),
-          ),
-    ),
+    textTheme: textTheme,
     cardTheme: CardThemeData(
       color: c.surface,
       elevation: 0,
@@ -163,6 +165,7 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
         padding: const WidgetStatePropertyAll(
           EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         ),
+        textStyle: WidgetStatePropertyAll(textTheme.bodyMedium),
         backgroundColor: WidgetStateProperty.fromMap({
           WidgetState.selected: c.text.withValues(alpha: 0.08),
           WidgetState.hovered: c.text.withValues(alpha: 0.08),

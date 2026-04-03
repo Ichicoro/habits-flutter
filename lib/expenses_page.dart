@@ -45,71 +45,82 @@ void showHoldExpenseBottomSheet(
     // isScrollControlled: true,
     // showDragHandle: true,
     useSafeArea: true,
-    builder: (context) => DraggableScrollableSheet(
-      expand: false,
-      builder: (context, scrollController) => SingleChildScrollView(
-        physics: NeverScrollableScrollPhysics(),
-        controller: scrollController,
-        child: Padding(
-          padding: EdgeInsets.all(12),
-          child: SizedBox(
-            width: double.infinity,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+    builder: (context) => Padding(
+      padding: EdgeInsets.fromLTRB(
+        12,
+        14,
+        12,
+        MediaQuery.of(context).padding.bottom + 14,
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SegmentedListSection(
               children: [
-                SegmentedListSection(
-                  children: [
-                    SegmentedListTile(
-                      title: const Text("Edit", textAlign: TextAlign.center),
-                      tileColor: tileColorForAlert(context),
-                      minVerticalPadding: 0,
-                      onTap: () {
-                        Navigator.of(context).pop();
-                        showEditExpensePage(
-                          context,
-                          expense: expense,
-                          onSaved: () {},
-                        );
-                      },
-                    ),
-                    SegmentedListTile(
-                      title: const Text("Delete", textAlign: TextAlign.center),
-                      tileColor: Colors.redAccent,
-                      textColor: Colors.black,
-                      minVerticalPadding: 0,
-                      onTap: () {
-                        // Navigator.of(context).pop();
-                        showConfirmationDialog(
-                          context,
-                          title:
-                              "Are you sure you want to delete this expense?",
-                          isDestructive: true,
-                          onConfirm: () async {
-                            // final boardRepository =
-                            // getIt.get<CurrentBoardRepository>();
-                            Navigator.of(context).pop();
-                          },
-                        );
-                      },
-                    ),
-                  ],
+                SegmentedListTile(
+                  title: const Text("Edit", textAlign: TextAlign.center),
+                  tileColor: tileColorForAlert(context),
+                  minVerticalPadding: 0,
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    showEditExpensePage(
+                      context,
+                      expense: expense,
+                      onSaved: () {},
+                    );
+                  },
                 ),
-                SizedBox(height: 16),
-                SegmentedListSection(
-                  children: [
-                    SegmentedListTile(
-                      title: const Text("Cancel", textAlign: TextAlign.center),
-                      tileColor: tileColorForAlert(context),
-                      minVerticalPadding: 0,
-                      onTap: () {
+                SegmentedListTile(
+                  title: const Text("Share", textAlign: TextAlign.center),
+                  tileColor: tileColorForAlert(context),
+                  minVerticalPadding: 0,
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    Drops.show(
+                      context,
+                      title: "Work in progress!",
+                      icon: Icons.warning_amber_rounded,
+                      iconColor: Colors.amber,
+                    );
+                  },
+                ),
+                SegmentedListTile(
+                  title: const Text("Delete", textAlign: TextAlign.center),
+                  tileColor: Colors.redAccent,
+                  textColor: Colors.black,
+                  minVerticalPadding: 0,
+                  onTap: () {
+                    // Navigator.of(context).pop();
+                    showConfirmationDialog(
+                      context,
+                      title: "Are you sure you want to delete this expense?",
+                      isDestructive: true,
+                      onConfirm: () async {
+                        // final boardRepository =
+                        // getIt.get<CurrentBoardRepository>();
                         Navigator.of(context).pop();
                       },
-                    ),
-                  ],
+                    );
+                  },
                 ),
               ],
             ),
-          ),
+            SizedBox(height: 16),
+            SegmentedListSection(
+              children: [
+                SegmentedListTile(
+                  title: const Text("Cancel", textAlign: TextAlign.center),
+                  tileColor: tileColorForAlert(context),
+                  minVerticalPadding: 0,
+                  onTap: () {
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     ),

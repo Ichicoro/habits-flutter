@@ -17,7 +17,6 @@ void showAddExpenseSheet(
   Navigator.push(
     context,
     CupertinoModalSheetRoute(
-      // fullscreenDialog: false,
       swipeDismissible: true,
       builder: (context) => PopScope(
         child: Sheet(
