@@ -1,10 +1,14 @@
 // Stateful widget
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:drops/drops.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:habits/api_client.dart';
 import 'package:habits/service_locator.dart';
 import 'package:habits/types.dart';
+import 'package:habits/utils.dart';
 import 'package:material_segmented_list/material_segmented_list.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
 import 'package:watch_it/watch_it.dart';
@@ -14,24 +18,52 @@ void showAddExpenseSheet(
   Expense? expense,
   Function? onSaved,
 }) {
-  Navigator.push(
-    context,
-    CupertinoModalSheetRoute(
-      swipeDismissible: true,
-      builder: (context) => PopScope(
-        child: Sheet(
-          physics: BouncingSheetPhysics(),
-          snapGrid: SheetSnapGrid.single(snap: SheetOffset(1)),
-          decoration: MaterialSheetDecoration(
-            size: SheetSize.fit,
-            borderRadius: BorderRadius.circular(25),
-            clipBehavior: Clip.antiAlias,
+  if (!kIsWeb && Platform.isIOS) {
+    Navigator.push(
+      context,
+      CupertinoModalSheetRoute(
+        swipeDismissible: true,
+        builder: (context) => PopScope(
+          child: Sheet(
+            physics: BouncingSheetPhysics(),
+            snapGrid: SheetSnapGrid.single(snap: SheetOffset(1)),
+            decoration: MaterialSheetDecoration(
+              size: SheetSize.fit,
+              borderRadius:
+                  (Theme.of(context).bottomSheetTheme.shape
+                          as RoundedRectangleBorder?)
+                      ?.borderRadius,
+              clipBehavior: Clip.antiAlias,
+            ),
+            child: AddExpenseSheet(expense: expense, onSaved: onSaved),
           ),
-          child: AddExpenseSheet(expense: expense, onSaved: onSaved),
         ),
       ),
-    ),
-  );
+    );
+  } else {
+    Navigator.push(
+      context,
+      ModalSheetRoute(
+        swipeDismissible: true,
+        builder: (context) => PopScope(
+          child: Sheet(
+            physics: BouncingSheetPhysics(),
+            snapGrid: SheetSnapGrid.single(snap: SheetOffset(1)),
+            decoration: MaterialSheetDecoration(
+              size: SheetSize.fit,
+              borderRadius:
+                  (Theme.of(context).bottomSheetTheme.shape
+                          as RoundedRectangleBorder?)
+                      ?.borderRadius,
+              // borderRadius: BorderRadius.circular(25),
+              clipBehavior: Clip.antiAlias,
+            ),
+            child: AddExpenseSheet(expense: expense, onSaved: onSaved),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 void showEditExpensePage(
@@ -227,6 +259,8 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
   late Board currentBoard;
 
   bool isLoading = false;
+  bool descValid = false;
+  bool amountValid = false;
 
   @override
   void initState() {
@@ -241,6 +275,11 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
       _splitType = widget.expense!.splitType;
     }
     // Listen for amount changes to recalculate participant splits
+    _descriptionController.addListener(() {
+      setState(() {
+        descValid = _descriptionController.text.isNotEmpty;
+      });
+    });
     _amountController.addListener(handleTextChange);
     _amountController.addListener(() {
       if (_participants.isNotEmpty) {
@@ -282,6 +321,9 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
         selection: TextSelection.collapsed(offset: sanitized.length),
       );
     }
+    setState(() {
+      amountValid = double.tryParse(sanitized) != null;
+    });
   }
 
   void _initializeParticipants(Board board) {
@@ -377,6 +419,34 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
     double amount = double.tryParse(_amountController.text) ?? 0.0;
     String description = _descriptionController.text;
 
+    if (!descValid) {
+      setState(() {
+        isLoading = false;
+      });
+      Drops.show(
+        context,
+        title: "Error",
+        subtitle: "Description can't be empty",
+        icon: Icons.error_outline_rounded,
+        iconColor: Colors.red,
+      );
+      return;
+    }
+
+    if (!amountValid) {
+      setState(() {
+        isLoading = false;
+      });
+      Drops.show(
+        context,
+        title: "Error",
+        subtitle: "Amount must be a valid number",
+        icon: Icons.error_outline_rounded,
+        iconColor: Colors.red,
+      );
+      return;
+    }
+
     User currentUser = getIt
         .get<CurrentUserRepository>()
         .currentUser
@@ -465,7 +535,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
         title: Text(widget.expense != null ? 'Edit expense' : 'New expense'),
         actions: [
           TextButton(
-            onPressed: _sendDataUpdate,
+            onPressed: descValid && amountValid ? _sendDataUpdate : null,
             child: const Text(
               "Save",
               // style: TextStyle(fontFamily: "BasteleurBold"),
@@ -631,6 +701,76 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                                   },
                                 )
                               : const SizedBox.shrink(),
+                          if (widget.expense != null)
+                            Column(
+                              spacing: 14,
+                              children: [
+                                Text(
+                                  "Created at ${widget.expense!.createdAt.toLocal()}",
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                                SegmentedListSection(
+                                  children: [
+                                    SegmentedListTile(
+                                      leading: const Text("Created by"),
+                                      trailing: Text(
+                                        widget.expense!.payer.name,
+                                      ),
+                                    ),
+                                    SegmentedListTile(
+                                      leading: const Text("Delete"),
+                                      // tileColor: Theme.of(
+                                      //   context,
+                                      // ).colorScheme.errorContainer,
+                                      textColor: Theme.of(
+                                        context,
+                                      ).colorScheme.errorContainer,
+                                      trailing: SegmentedListChevron(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.errorContainer,
+                                      ),
+                                      onTap: () {
+                                        showConfirmationDialog(
+                                          context,
+                                          title: "Delete Expense",
+                                          content:
+                                              "Are you sure you want to delete this expense?",
+                                          isDestructive: true,
+                                          onConfirm: () async {
+                                            setState(() {
+                                              isLoading = true;
+                                            });
+                                            try {
+                                              await apiClient.deleteExpense(
+                                                widget.expense!.id,
+                                              );
+                                              if (mounted) {
+                                                Navigator.of(context).pop();
+                                                Drops.show(
+                                                  context,
+                                                  title: "Expense deleted",
+                                                  icon: Icons.delete_rounded,
+                                                );
+                                                widget.onSaved?.call();
+                                              }
+                                            } on DioException catch (e) {
+                                              setState(() {
+                                                isLoading = false;
+                                              });
+                                              Drops.show(
+                                                context,
+                                                title: "Error",
+                                              );
+                                            }
+                                          },
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                         ],
                       ),
                     ),

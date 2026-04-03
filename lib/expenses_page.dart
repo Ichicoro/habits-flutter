@@ -1,6 +1,8 @@
+import 'package:dio/dio.dart';
 import 'package:drops/drops.dart';
 import 'package:flutter/material.dart';
 import 'package:habits/add_expense.dart';
+import 'package:habits/api_client.dart';
 import 'package:habits/service_locator.dart';
 import 'package:habits/types.dart';
 import 'package:habits/utils.dart';
@@ -40,10 +42,17 @@ void showHoldExpenseBottomSheet(
   BuildContext context, {
   required Expense expense,
 }) {
+  var apiClient = getIt.get<ApiClient>();
+  var boardRepository = getIt.get<CurrentBoardRepository>();
+
   showModalBottomSheet(
     context: context,
     // isScrollControlled: true,
     // showDragHandle: true,
+    clipBehavior: Clip.antiAlias,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+    ),
     useSafeArea: true,
     builder: (context) => Padding(
       padding: EdgeInsets.fromLTRB(
@@ -100,7 +109,22 @@ void showHoldExpenseBottomSheet(
                       onConfirm: () async {
                         // final boardRepository =
                         // getIt.get<CurrentBoardRepository>();
-                        Navigator.of(context).pop();
+                        try {
+                          await apiClient.deleteExpense(expense.id);
+                          if (context.mounted) {
+                            Navigator.of(context).pop();
+                            await boardRepository.updateData(forceReload: true);
+                            Drops.show(
+                              context,
+                              title: "Expense deleted",
+                              icon: Icons.delete_rounded,
+                            );
+                          }
+                        } on DioException catch (e) {
+                          if (context.mounted) {
+                            Drops.show(context, title: "Error");
+                          }
+                        }
                       },
                     );
                   },

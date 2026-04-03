@@ -96,43 +96,46 @@ class _MainScreenState extends ConsumerState<MainScreen> {
             statusBarColor: Colors.transparent,
           ),
           child: Scaffold(
-          bottomNavigationBar:
-              (Constants.enableLiquidGlassBar
-                      ? (
-                          tabs: [
-                            NativeGlassNavBarItem(
-                              label: "Expenses",
-                              symbol: "banknote",
+            bottomNavigationBar:
+                (Constants.enableLiquidGlassBar
+                        ? (
+                            tabs: [
+                              NativeGlassNavBarItem(
+                                label: "Expenses",
+                                symbol: "banknote",
+                              ),
+                              NativeGlassNavBarItem(
+                                label: "Settings",
+                                symbol: "gear",
+                              ),
+                            ],
+                            actionButton: TabBarActionButton(
+                              symbol: "plus",
+                              onTap: () {
+                                // showAddExpenseSheet(context);
+                                // showCupertinoSheet(
+                                //   context: context,
+                                //   builder: (context) {
+                                //     return AddExpenseSheet();
+                                //   },
+                                // );
+                              },
                             ),
-                            NativeGlassNavBarItem(
-                              label: "Settings",
-                              symbol: "gear",
-                            ),
-                          ],
-                          actionButton: TabBarActionButton(
-                            symbol: "plus",
-                            onTap: () {
-                              // showAddExpenseSheet(context);
-                              // showCupertinoSheet(
-                              //   context: context,
-                              //   builder: (context) {
-                              //     return AddExpenseSheet();
-                              //   },
-                              // );
+                            currentIndex: _selectedIndex,
+                            onTap: (index) {
+                              setState(() {
+                                _selectedIndex = index;
+                              });
                             },
-                          ),
-                          currentIndex: _selectedIndex,
-                          onTap: (index) {
-                            setState(() {
-                              _selectedIndex = index;
-                            });
-                          },
-                          fallback: fallbackNavbar,
-                        )
-                      : fallbackNavbar)
-                  as Widget,
-          body: [const ExpensesPage(), const SettingsScreen()][_selectedIndex],
-        ),
+                            fallback: fallbackNavbar,
+                          )
+                        : fallbackNavbar)
+                    as Widget,
+            body: [
+              const ExpensesPage(),
+              const SettingsScreen(),
+            ][_selectedIndex],
+          ),
         );
       },
     );

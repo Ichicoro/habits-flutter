@@ -54,11 +54,16 @@ class SegmentedSectionSpacer extends StatelessWidget {
 }
 
 class SegmentedListChevron extends StatelessWidget {
-  const SegmentedListChevron({super.key});
+  const SegmentedListChevron({super.key, this.color});
+
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox(width: 19, child: Icon(Icons.chevron_right_rounded));
+    return SizedBox(
+      width: 19,
+      child: Icon(Icons.chevron_right_rounded, color: color),
+    );
   }
 }
 

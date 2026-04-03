@@ -1,3 +1,4 @@
+import 'package:drops/drops.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:habits/providers/auth_provider.dart';
@@ -84,6 +85,13 @@ class SettingsScreen extends ConsumerWidget {
               children: [
                 SegmentedListTile(
                   leading: const Text("Force dark mode"),
+                  onTap: () => ref
+                      .read(settingsProvider.notifier)
+                      .setThemeMode(
+                        appSettings.themeMode == ThemeMode.dark
+                            ? ThemeMode.light
+                            : ThemeMode.dark,
+                      ),
                   trailing: Switch(
                     value: appSettings.themeMode == ThemeMode.dark,
                     onChanged: (value) {
@@ -97,6 +105,11 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 SegmentedListTile(
                   leading: const Text("OLED dark mode"),
+                  onTap: () {
+                    ref
+                        .read(settingsProvider.notifier)
+                        .setOledDarkMode(!appSettings.oledDarkMode);
+                  },
                   trailing: Switch(
                     value: appSettings.oledDarkMode,
                     onChanged: (value) {
@@ -134,7 +147,14 @@ class SettingsScreen extends ConsumerWidget {
                     SegmentedListTile(
                       leading: const Text("Invite users"),
                       trailing: SegmentedListChevron(),
-                      onTap: () {},
+                      onTap: () {
+                        Drops.show(
+                          context,
+                          title: "Work in progress!",
+                          icon: Icons.warning_amber_rounded,
+                          iconColor: Colors.amber,
+                        );
+                      },
                     ),
                   ],
                 );

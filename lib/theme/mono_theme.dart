@@ -105,26 +105,16 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
       backgroundColor: c.bg,
       elevation: 0,
       scrolledUnderElevation: 0,
-      // centerTitle: false,
+      centerTitle: true,
       foregroundColor: c.text,
       titleTextStyle: TextStyle(
         color: c.text,
         fontSize: 18,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.2,
+        fontFamily: textTheme.titleMedium?.fontFamily,
       ),
     ),
-    // textTheme: Typography.englishLike2021
-    //     .apply(bodyColor: c.text, displayColor: c.text)
-    //     .copyWith(
-    //       displayLarge: const TextStyle(
-    //         fontWeight: FontWeight.w700,
-    //         letterSpacing: -0.5,
-    //       ),
-    //       titleMedium: const TextStyle(fontWeight: FontWeight.w600),
-    //       bodyMedium: TextStyle(color: c.text),
-    //       bodySmall: TextStyle(color: c.textMuted),
-    //     ),
     textTheme: textTheme,
     cardTheme: CardThemeData(
       color: c.surface,
@@ -132,6 +122,16 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
       margin: EdgeInsets.zero,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.all(Radius.circular(14)),
+      ),
+    ),
+    bottomSheetTheme: BottomSheetThemeData(
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(
+            defaultTargetPlatform == TargetPlatform.iOS ? 24 : 24,
+          ),
+        ),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
