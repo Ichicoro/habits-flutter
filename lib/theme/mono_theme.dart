@@ -140,11 +140,7 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
     bottomSheetTheme: BottomSheetThemeData(
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(
-            defaultTargetPlatform == TargetPlatform.iOS ? 24 : 24,
-          ),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(

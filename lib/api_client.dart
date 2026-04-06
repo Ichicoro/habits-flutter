@@ -1,3 +1,4 @@
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:habits/types.dart';
 import 'package:dio/dio.dart';
@@ -60,6 +61,10 @@ class ApiClient {
     }
   }
 
+  bool isLoggedIn() {
+    return _client.options.headers.containsKey('Authorization');
+  }
+
   Future<bool> hasValidToken() async {
     final token = await _secureStorage.read(key: 'auth_token');
     return token != null;
@@ -89,6 +94,9 @@ class ApiClient {
   }
 
   Future<User> getSelf() async {
+    if (!isLoggedIn()) {
+      logger.warning('Attempted to fetch current user without a token');
+    }
     try {
       final response = await _client.get('/api/users/me/');
       return User.fromJson(response.data as Map<String, dynamic>);
@@ -294,10 +302,13 @@ class ApiClient {
     }
   }
 
-  Future<void> uploadProfilePicture(String filePath) async {
+  Future<void> uploadProfilePicture(XFile file) async {
     try {
       final formData = FormData.fromMap({
-        'profile_picture': await MultipartFile.fromFile(filePath),
+        'profile_picture': MultipartFile.fromBytes(
+          await file.readAsBytes(),
+          filename: file.name,
+        ),
       });
       await _client.post(
         '/api/users/me/profile-picture/',

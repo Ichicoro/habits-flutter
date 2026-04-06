@@ -20,7 +20,8 @@ Color tileColorForAlert(BuildContext context) {
 }
 
 bool shouldEnableGlass(AppSettings settings) {
-  return Constants.enableLiquidGlassBar &&
+  return !kIsWeb &&
+      Constants.enableLiquidGlassBar &&
       !settings.disableLiquidGlassBar &&
       Platform.isIOS;
 }

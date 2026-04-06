@@ -12,7 +12,7 @@ import 'package:material_segmented_list/material_segmented_list.dart';
 void showChangePictureDialog(
   BuildContext context, {
   required User user,
-  required Function(String) onPictureSelected,
+  required Function(XFile) onPictureSelected,
 }) {
   showDialog(
     context: context,
@@ -43,8 +43,7 @@ void showChangePictureDialog(
                         source: ImageSource.gallery,
                       );
                       if (picked != null) {
-                        final String path = picked.path;
-                        onPictureSelected(path);
+                        onPictureSelected(picked);
                         if (context.mounted) {
                           Navigator.of(context).pop();
                         }
@@ -79,11 +78,11 @@ class UserSettingsPage extends ConsumerWidget {
   void _changeProfilePicture(
     BuildContext context,
     WidgetRef ref,
-    String path,
+    XFile file,
   ) async {
     showSnackBar(context, "Uploading picture...");
     try {
-      await apiClient.uploadProfilePicture(path);
+      await apiClient.uploadProfilePicture(file);
       ref.read(currentUserProvider.notifier).refresh();
       if (context.mounted) {
         showSnackBar(context, "Profile picture updated!");
@@ -117,8 +116,8 @@ class UserSettingsPage extends ConsumerWidget {
                 showChangePictureDialog(
                   context,
                   user: currentUser.value!,
-                  onPictureSelected: (path) =>
-                      _changeProfilePicture(context, ref, path),
+                  onPictureSelected: (file) =>
+                      _changeProfilePicture(context, ref, file),
                 );
               },
             ),

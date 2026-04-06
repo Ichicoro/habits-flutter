@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:habits/constants.dart' as Constants;
@@ -146,7 +147,7 @@ class SettingsScreen extends ConsumerWidget {
                     },
                   ),
                 ),
-                if (Platform.isIOS && Constants.enableLiquidGlassBar)
+                if (!kIsWeb && Platform.isIOS && Constants.enableLiquidGlassBar)
                   SegmentedListTile(
                     leading: const Text("Disable Liquid Glass"),
                     onTap: () {
