@@ -3,11 +3,23 @@ import 'package:habits/api_client.dart';
 import 'package:habits/service_locator.dart';
 import 'package:habits/types.dart';
 
-final currentUserProvider = FutureProvider<User>((ref) async {
-  ref.watch(authProvider);
-  final apiClient = getIt.get<ApiClient>();
-  return apiClient.getSelf();
-});
+final currentUserProvider =
+    AsyncNotifierProvider<CurrentUserNotifier, User>(CurrentUserNotifier.new);
+
+class CurrentUserNotifier extends AsyncNotifier<User> {
+  @override
+  Future<User> build() async {
+    ref.watch(authProvider);
+    final apiClient = getIt.get<ApiClient>();
+    return apiClient.getSelf();
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(
+        () => getIt.get<ApiClient>().getSelf());
+  }
+}
 
 final authProvider = NotifierProvider<AuthNotifier, AsyncValue<bool>>(
   AuthNotifier.new,

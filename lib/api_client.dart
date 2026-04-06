@@ -294,6 +294,25 @@ class ApiClient {
     }
   }
 
+  Future<void> uploadProfilePicture(String filePath) async {
+    try {
+      final formData = FormData.fromMap({
+        'profile_picture': await MultipartFile.fromFile(filePath),
+      });
+      await _client.post(
+        '/api/users/me/profile-picture/',
+        data: formData,
+        options: Options(headers: {'Content-Type': 'multipart/form-data'}),
+      );
+      logger.info('Profile picture updated successfully');
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        await _handleAuthFailure();
+      }
+      rethrow;
+    }
+  }
+
   Future<void> deleteExpense(String id) async {
     try {
       await _client.delete('/api/expenses/$id/');

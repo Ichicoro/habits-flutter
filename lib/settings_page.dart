@@ -36,9 +36,7 @@ class SettingsScreen extends ConsumerWidget {
             SegmentedListTile(
               onTap: () {
                 Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const UserSettingsPage(),
-                  ),
+                  MaterialPageRoute(builder: (context) => UserSettingsPage()),
                 );
               },
               leading: Row(

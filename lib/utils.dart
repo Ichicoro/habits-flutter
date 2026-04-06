@@ -35,6 +35,9 @@ void showSnackBar(
   String? actionLabel,
   VoidCallback? onAction,
 }) {
+  if (!context.mounted) {
+    return;
+  }
   final theme = Theme.of(context);
   if (clearExisting) {
     ScaffoldMessenger.of(context).clearSnackBars();
@@ -136,32 +139,37 @@ class SegmentedListChevron extends StatelessWidget {
 }
 
 class UserAvatar extends StatelessWidget {
-  const UserAvatar(this.user, {super.key, required this.size});
+  const UserAvatar(this.user, {super.key, required this.size, this.onTap});
 
   final User? user;
   final double size;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return CircleAvatar(
       radius: size,
       backgroundColor: Theme.of(context).colorScheme.primary,
-      child: user?.profilePicture == null
-          ? Text(
-              user?.name.isNotEmpty == true ? user!.name[0] : '?',
-              style: TextStyle(
-                fontSize: size,
-                color: Theme.of(context).colorScheme.onPrimary,
+      child: InkWell(
+        onTap: onTap,
+        customBorder: CircleBorder(),
+        child: user?.profilePicture == null
+            ? Text(
+                user?.name.isNotEmpty == true ? user!.name[0] : '?',
+                style: TextStyle(
+                  fontSize: size,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                ),
+              )
+            : ClipOval(
+                child: Image.network(
+                  user!.profilePicture!,
+                  width: size * 2,
+                  height: size * 2,
+                  fit: BoxFit.cover,
+                ),
               ),
-            )
-          : ClipOval(
-              child: Image.network(
-                user!.profilePicture!,
-                width: size * 2,
-                height: size * 2,
-                fit: BoxFit.cover,
-              ),
-            ),
+      ),
     );
   }
 }
@@ -278,14 +286,6 @@ void showConfirmationDialog(
                   SegmentedListTile(
                     visualDensity: VisualDensity.compact,
                     dense: true,
-                    title: Center(child: Text("Cancel")),
-                    onTap: () => Navigator.of(context).pop(),
-                    tileColor: tileColorForAlert(context),
-                    minVerticalPadding: 0,
-                  ),
-                  SegmentedListTile(
-                    visualDensity: VisualDensity.compact,
-                    dense: true,
                     title: Center(child: Text(confirmText)),
                     tileColor: isDestructive
                         ? Colors.redAccent
@@ -300,6 +300,14 @@ void showConfirmationDialog(
                         Navigator.of(context).pop();
                       }
                     },
+                  ),
+                  SegmentedListTile(
+                    visualDensity: VisualDensity.compact,
+                    dense: true,
+                    title: Center(child: Text("Cancel")),
+                    onTap: () => Navigator.of(context).pop(),
+                    tileColor: tileColorForAlert(context),
+                    minVerticalPadding: 0,
                   ),
                 ],
               ),

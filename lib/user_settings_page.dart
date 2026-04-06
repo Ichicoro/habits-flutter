@@ -1,11 +1,102 @@
+import 'package:dio/dio.dart';
+import 'package:habits/api_client.dart';
+import 'package:habits/service_locator.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:habits/providers/auth_provider.dart';
+import 'package:habits/types.dart';
 import 'package:habits/utils.dart';
 import 'package:material_segmented_list/material_segmented_list.dart';
 
+void showChangePictureDialog(
+  BuildContext context, {
+  required User user,
+  required Function(String) onPictureSelected,
+}) {
+  showDialog(
+    context: context,
+    builder: (context) => SimpleDialog(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: Column(
+            spacing: 16,
+            children: [
+              Text(
+                "Change Profile Picture",
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              UserAvatar(user, size: 48),
+              SegmentedListSection(
+                children: [
+                  SegmentedListTile(
+                    visualDensity: VisualDensity.compact,
+                    dense: true,
+                    title: Center(child: Text("Pick image...")),
+                    tileColor: Theme.of(context).colorScheme.primary,
+                    textColor: Theme.of(context).colorScheme.onPrimary,
+                    minVerticalPadding: 0,
+                    onTap: () async {
+                      final picker = ImagePicker();
+                      var picked = await picker.pickImage(
+                        source: ImageSource.gallery,
+                      );
+                      if (picked != null) {
+                        final String path = picked.path;
+                        onPictureSelected(path);
+                        if (context.mounted) {
+                          Navigator.of(context).pop();
+                        }
+                      }
+                    },
+                  ),
+                  SegmentedListTile(
+                    visualDensity: VisualDensity.compact,
+                    dense: true,
+                    title: Center(child: Text("Cancel")),
+                    onTap: () => Navigator.of(context).pop(),
+                    tileColor: tileColorForAlert(context),
+                    minVerticalPadding: 0,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 class UserSettingsPage extends ConsumerWidget {
-  const UserSettingsPage({Key? key}) : super(key: key);
+  UserSettingsPage({Key? key})
+    : apiClient = getIt.get<ApiClient>(),
+      super(key: key);
+
+  final ApiClient apiClient;
+
+  void _changeProfilePicture(
+    BuildContext context,
+    WidgetRef ref,
+    String path,
+  ) async {
+    showSnackBar(context, "Uploading picture...");
+    try {
+      await apiClient.uploadProfilePicture(path);
+      ref.read(currentUserProvider.notifier).refresh();
+      if (context.mounted) {
+        showSnackBar(context, "Profile picture updated!");
+      }
+    } on DioException catch (e) {
+      if (context.mounted) {
+        showSnackBar(
+          context,
+          "Failed to upload picture: ${ApiClient.parseDjangoErrorMessage(e)}",
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -19,7 +110,18 @@ class UserSettingsPage extends ConsumerWidget {
         child: Column(
           spacing: 16,
           children: [
-            UserAvatar(currentUser.value, size: 60),
+            UserAvatar(
+              currentUser.value,
+              size: 60,
+              onTap: () {
+                showChangePictureDialog(
+                  context,
+                  user: currentUser.value!,
+                  onPictureSelected: (path) =>
+                      _changeProfilePicture(context, ref, path),
+                );
+              },
+            ),
             SizedBox(height: 0),
             SegmentedListSection(
               children: [
