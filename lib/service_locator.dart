@@ -1,10 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
-import 'package:watch_it/watch_it.dart';
 import 'package:habits/api_client.dart';
 import 'package:habits/types.dart';
+import 'package:logging/logging.dart';
+import 'package:watch_it/watch_it.dart';
 
 final getIt = GetIt.instance;
+
+final _log = Logger('ServiceLocator');
 
 class CurrentUserRepository {
   final ApiClient apiClient;
@@ -19,9 +22,7 @@ class CurrentUserRepository {
     try {
       currentUser.value = await apiClient.getSelf();
     } catch (e) {
-      if (kDebugMode) {
-        print('Failed to load current user: $e');
-      }
+      _log.warning('Failed to load current user: $e');
     }
   }
 }
@@ -40,7 +41,7 @@ class CurrentBoardRepository {
       if (boards.value.isEmpty || forceReload) {
         boards.value = await apiClient.getBoards();
       }
-      if (boards.value.isNotEmpty) {
+      if (boards.value.isNotEmpty && currentBoard.value == null) {
         currentBoard.value = boards.value[0];
       }
       if (currentBoard.value != null &&
@@ -50,9 +51,7 @@ class CurrentBoardRepository {
           ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('Failed to update data: $e');
-      }
+      _log.warning('Failed to update data: $e');
     }
   }
 
@@ -70,9 +69,7 @@ class CurrentBoardRepository {
       currentBoard.value = board;
       await updateExpenses();
     } catch (e) {
-      if (kDebugMode) {
-        print('Failed to switch board: $e');
-      }
+      _log.warning('Failed to switch board: $e');
     }
   }
 }

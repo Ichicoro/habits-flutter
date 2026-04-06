@@ -1,11 +1,11 @@
 import 'package:dio/dio.dart';
-import 'package:drops/drops.dart';
 import 'package:flutter/material.dart';
 import 'package:habits/add_expense.dart';
 import 'package:habits/api_client.dart';
 import 'package:habits/service_locator.dart';
 import 'package:habits/types.dart';
 import 'package:habits/utils.dart';
+import 'package:habits/widgets/title_with_board_picker.dart';
 import 'package:material_segmented_list/material_segmented_list.dart';
 import 'package:watch_it/watch_it.dart';
 
@@ -87,11 +87,10 @@ void showHoldExpenseBottomSheet(
                   minVerticalPadding: 0,
                   onTap: () {
                     Navigator.of(context).pop();
-                    Drops.show(
+                    showSnackBar(
                       context,
-                      title: "Work in progress!",
-                      icon: Icons.warning_amber_rounded,
-                      iconColor: Colors.amber,
+                      "Work in progress!",
+                      type: AlertType.warning,
                     );
                   },
                 ),
@@ -107,22 +106,20 @@ void showHoldExpenseBottomSheet(
                       title: "Are you sure you want to delete this expense?",
                       isDestructive: true,
                       onConfirm: () async {
-                        // final boardRepository =
-                        // getIt.get<CurrentBoardRepository>();
                         try {
                           await apiClient.deleteExpense(expense.id);
                           if (context.mounted) {
                             Navigator.of(context).pop();
+                            showSnackBar(context, "Expense deleted");
                             await boardRepository.updateData(forceReload: true);
-                            Drops.show(
-                              context,
-                              title: "Expense deleted",
-                              icon: Icons.delete_rounded,
-                            );
                           }
                         } on DioException catch (e) {
                           if (context.mounted) {
-                            Drops.show(context, title: "Error");
+                            showSnackBar(
+                              context,
+                              "Error deleting expense: ${ApiClient.parseDjangoErrorMessage(e)}",
+                              type: AlertType.error,
+                            );
                           }
                         }
                       },
@@ -167,11 +164,7 @@ class ExpensesPage extends StatelessWidget with WatchItMixin {
     Future<void> pullRefresh({bool showFeedback = true}) async {
       await boardRepository.updateData(forceReload: true);
       if (showFeedback && context.mounted) {
-        Drops.show(
-          context,
-          title: "Data refreshed",
-          icon: Icons.refresh_rounded,
-        );
+        showSnackBar(context, "Data refreshed");
       }
     }
 
@@ -181,57 +174,35 @@ class ExpensesPage extends StatelessWidget with WatchItMixin {
       // extendBodyBehindAppBar: true,
       // extendBody: true,
       appBar: AppBar(
-        title: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: activeBoard != null
-              ? () {
-                  // show board switcher
-                }
-              : null,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-            child: Column(
-              children: [
-                Text('Expenses'),
-                if (activeBoard != null)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.swap_horiz_rounded, size: 14),
-                      const SizedBox(width: 4),
-                      Text(
-                        activeBoard.name,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-              ],
-            ),
-          ),
-        ),
+        title: TitleWithBoardPicker(title: "Expenses"),
         actions: [
           IconButton(
             icon: const Icon(Icons.stacked_bar_chart_rounded),
             onPressed: () {
-              Drops.show(
+              showSnackBar(
                 context,
-                title: "WIP!",
-                subtitle:
-                    "Statistics aren't available yet!\nCome back later <3",
-                subtitleMaxLines: 2,
-                icon: Icons.warning_amber_rounded,
-                iconColor: Colors.amber,
+                "Statistics aren't available yet! Come back later ^¬^",
+                type: AlertType.warning,
               );
             },
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
+        label: Text("Add expense"),
         onPressed: () {
           showAddExpenseSheet(context);
         },
-        elevation: 1,
-        child: Icon(Icons.add),
+        // elevation: 10,
+        icon: const Icon(Icons.add_rounded),
+        shape: StadiumBorder(
+          side: BorderSide(
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.2),
+            width: 1,
+          ),
+        ),
       ),
       body: RefreshIndicator(
         onRefresh: pullRefresh,
@@ -250,75 +221,95 @@ class ExpensesPage extends StatelessWidget with WatchItMixin {
                     constraints: BoxConstraints(
                       minHeight: constraints.maxHeight - 16,
                     ),
-                    child: SegmentedListSection(
-                      children: [
-                        for (var expense in expenses)
-                          SegmentedListTile(
-                            minVerticalPadding: 12,
-                            key: ValueKey(expense.id),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 0,
-                            ),
-                            leading: Container(
-                              foregroundDecoration: expense.category == null
-                                  ? BoxDecoration(
-                                      color: Colors.grey,
-                                      backgroundBlendMode: BlendMode.saturation,
-                                    )
-                                  : null,
-                              child: Text(
-                                expense.category?.emoji ?? '💰',
-                                style: TextStyle(fontSize: 24),
+                    child: (expenses.isEmpty)
+                        ? Center(
+                            child: Text(
+                              "No expenses yet.\nTap the button below to add your first expense!",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.6),
+                                fontSize: 16,
                               ),
                             ),
-                            title: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              spacing: 1,
-                              children: [
-                                Text(
-                                  expense.description ?? '???',
-                                  style: Theme.of(context).textTheme.bodyLarge,
-                                ),
-                                Text(
-                                  datetimeToLocalHRFormat(
-                                    expense.createdAt.toLocal(),
+                          )
+                        : SegmentedListSection(
+                            children: [
+                              for (var expense in expenses)
+                                SegmentedListTile(
+                                  minVerticalPadding: 12,
+                                  key: ValueKey(expense.id),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 0,
                                   ),
-                                  style: Theme.of(context).textTheme.bodySmall,
+                                  leading: Container(
+                                    foregroundDecoration:
+                                        expense.category == null
+                                        ? BoxDecoration(
+                                            color: Colors.grey,
+                                            backgroundBlendMode:
+                                                BlendMode.saturation,
+                                          )
+                                        : null,
+                                    child: Text(
+                                      expense.category?.emoji ?? '💰',
+                                      style: TextStyle(fontSize: 24),
+                                    ),
+                                  ),
+                                  title: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    spacing: 1,
+                                    children: [
+                                      Text(
+                                        expense.description ?? '???',
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.bodyLarge,
+                                      ),
+                                      Text(
+                                        datetimeToLocalHRFormat(expense.date),
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.bodySmall,
+                                      ),
+                                    ],
+                                  ),
+                                  onTap: () {
+                                    showEditExpensePage(
+                                      context,
+                                      expense: expense,
+                                      onSaved: () {
+                                        pullRefresh(showFeedback: false);
+                                      },
+                                    );
+                                  },
+                                  onLongPress: () {
+                                    showHoldExpenseBottomSheet(
+                                      context,
+                                      expense: expense,
+                                    );
+                                  },
+                                  trailing: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    spacing: 2,
+                                    children: [
+                                      MoneyTextSpan(amount: expense.amount),
+                                      Text(
+                                        "Paid by ${expense.payer.firstName}",
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.bodySmall,
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ],
-                            ),
-                            onTap: () {
-                              showEditExpensePage(
-                                context,
-                                expense: expense,
-                                onSaved: () {
-                                  pullRefresh(showFeedback: false);
-                                },
-                              );
-                            },
-                            onLongPress: () {
-                              showHoldExpenseBottomSheet(
-                                context,
-                                expense: expense,
-                              );
-                            },
-                            trailing: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              spacing: 2,
-                              children: [
-                                MoneyTextSpan(amount: expense.amount),
-                                Text(
-                                  "Paid by ${expense.payer.firstName}",
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                              ],
-                            ),
+                            ],
                           ),
-                      ],
-                    ),
                   ),
                 ),
               ),

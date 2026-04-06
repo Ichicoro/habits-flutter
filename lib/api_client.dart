@@ -1,14 +1,45 @@
+import 'package:flutter/foundation.dart';
 import 'package:habits/types.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:logging/logging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'constants.dart' as Constants;
+
+final logger = Logger('ApiClient');
 
 class ApiClient {
   late String baseUrl;
   late Dio _client;
   late SharedPreferencesAsync _prefs;
-  final _secureStorage = const FlutterSecureStorage();
+  final _secureStorage = const FlutterSecureStorage(
+    mOptions: MacOsOptions(
+      groupId: 'api',
+      useDataProtectionKeyChain: kDebugMode ? false : true,
+    ),
+  );
+
+  static String parseDjangoErrorMessage(DioException e) {
+    logger.severe('API error: ${e.response?.data}', e, e.stackTrace);
+    if (e.response?.data is Map<String, dynamic>) {
+      final data = e.response!.data as Map<String, dynamic>;
+      if (data.containsKey('detail')) {
+        return data['detail'] as String;
+      } else {
+        // Return the first error message from the response
+        for (var value in data.values) {
+          if (value is List && value.isNotEmpty) {
+            return value[0] as String;
+          } else if (value is String) {
+            return value;
+          }
+        }
+      }
+    } else if (e.response?.data is List) {
+      return (e.response?.data as List).first as String;
+    }
+    return 'An unknown error occurred';
+  }
 
   ApiClient() {
     _prefs = SharedPreferencesAsync();
@@ -229,7 +260,7 @@ class ApiClient {
       if (e.response?.statusCode == 401) {
         await _handleAuthFailure();
       }
-      throw Exception('Failed to create expense: ${e.message}');
+      rethrow;
     }
   }
 

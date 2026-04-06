@@ -70,6 +70,7 @@ class User {
   final String email;
   final String? firstName;
   final String? lastName;
+  final String? profilePicture;
 
   User({
     required this.id,
@@ -77,6 +78,7 @@ class User {
     required this.email,
     this.firstName,
     this.lastName,
+    this.profilePicture,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -86,6 +88,7 @@ class User {
       email: json['email'] as String,
       firstName: json['first_name'] as String?,
       lastName: json['last_name'] as String?,
+      profilePicture: json['profile_picture'] as String?,
     );
   }
 
@@ -106,6 +109,7 @@ class User {
     'email': email,
     'first_name': firstName,
     'last_name': lastName,
+    'profile_picture': profilePicture,
   };
 
   User copyWith({
@@ -114,6 +118,7 @@ class User {
     String? email,
     String? firstName,
     String? lastName,
+    String? profilePicture,
   }) {
     return User(
       id: id ?? this.id,
@@ -121,6 +126,7 @@ class User {
       email: email ?? this.email,
       firstName: firstName ?? this.firstName,
       lastName: lastName ?? this.lastName,
+      profilePicture: profilePicture ?? this.profilePicture,
     );
   }
 }
@@ -339,6 +345,7 @@ class Expense {
   final String? description;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final DateTime date;
   final String board;
   final User payer;
   final ExpenseCategory? category;
@@ -349,6 +356,7 @@ class Expense {
     required this.splitType,
     required this.amount,
     this.description,
+    required this.date,
     required this.createdAt,
     required this.updatedAt,
     required this.board,
@@ -371,6 +379,7 @@ class Expense {
       description: json['description'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
+      date: DateTime.parse(json['date'] as String),
       board: json['board'] as String,
       payer: User.fromJson(json['payer']),
       category: json['category'] != null
@@ -398,6 +407,7 @@ class Expense {
     SplitTypeEnum? splitType,
     double? amount,
     String? description,
+    DateTime? date,
     DateTime? createdAt,
     DateTime? updatedAt,
     String? board,
@@ -410,6 +420,7 @@ class Expense {
       splitType: splitType ?? this.splitType,
       amount: amount ?? this.amount,
       description: description ?? this.description,
+      date: date ?? this.date,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       board: board ?? this.board,

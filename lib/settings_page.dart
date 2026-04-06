@@ -1,10 +1,15 @@
-import 'package:drops/drops.dart';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:habits/constants.dart' as Constants;
 import 'package:habits/providers/auth_provider.dart';
 import 'package:habits/providers/settings_provider.dart';
 import 'package:habits/service_locator.dart';
+import 'package:habits/user_settings_page.dart';
 import 'package:habits/utils.dart';
+import 'package:habits/widgets/app_dropdown.dart';
+import 'package:habits/widgets/title_with_board_picker.dart';
 import 'package:material_segmented_list/material_segmented_list.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -18,15 +23,37 @@ class SettingsScreen extends ConsumerWidget {
     final appSettings = ref.watch(settingsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Settings")),
+      extendBody: true,
+      appBar: AppBar(title: TitleWithBoardPicker(title: "Settings")),
       body: SingleChildScrollView(
+        clipBehavior: Clip.none,
         padding: const EdgeInsets.all(16.0),
         child: Column(
           spacing: 12,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SegmentedSectionTitle("Account", hasSpacing: false),
-            SegmentedListSection(
+            SegmentedListTile(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const UserSettingsPage(),
+                  ),
+                );
+              },
+              leading: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                spacing: 12,
+                children: [
+                  UserAvatar(currentUser.value, size: 16),
+                  Text(currentUser.value?.name ?? 'Guest'),
+                ],
+              ),
+              trailing: SegmentedListChevron(),
+            ),
+
+            /* SegmentedListSection(
               children: [
                 SegmentedListTile(
                   leading: const Text("Username"),
@@ -78,28 +105,30 @@ class SettingsScreen extends ConsumerWidget {
                   },
                 ),
               ],
-            ),
-
+            ), */
             SegmentedSectionTitle("App settings"),
             SegmentedListSection(
               children: [
                 SegmentedListTile(
-                  leading: const Text("Force dark mode"),
-                  onTap: () => ref
-                      .read(settingsProvider.notifier)
-                      .setThemeMode(
-                        appSettings.themeMode == ThemeMode.dark
-                            ? ThemeMode.light
-                            : ThemeMode.dark,
+                  leading: const Text("Theme"),
+                  trailing: AppDropdown<ThemeMode>(
+                    value: appSettings.themeMode,
+                    items: const [
+                      DropdownMenuItem(
+                        value: ThemeMode.system,
+                        child: Text("System"),
                       ),
-                  trailing: Switch(
-                    value: appSettings.themeMode == ThemeMode.dark,
-                    onChanged: (value) {
-                      ref
-                          .read(settingsProvider.notifier)
-                          .setThemeMode(
-                            value ? ThemeMode.dark : ThemeMode.light,
-                          );
+                      DropdownMenuItem(
+                        value: ThemeMode.light,
+                        child: Text("Light"),
+                      ),
+                      DropdownMenuItem(
+                        value: ThemeMode.dark,
+                        child: Text("Dark"),
+                      ),
+                    ],
+                    onChanged: (mode) {
+                      ref.read(settingsProvider.notifier).setThemeMode(mode);
                     },
                   ),
                 ),
@@ -119,6 +148,25 @@ class SettingsScreen extends ConsumerWidget {
                     },
                   ),
                 ),
+                if (Platform.isIOS && Constants.enableLiquidGlassBar)
+                  SegmentedListTile(
+                    leading: const Text("Disable Liquid Glass"),
+                    onTap: () {
+                      ref
+                          .read(settingsProvider.notifier)
+                          .setDisableLiquidGlassBar(
+                            !appSettings.disableLiquidGlassBar,
+                          );
+                    },
+                    trailing: Switch(
+                      value: appSettings.disableLiquidGlassBar,
+                      onChanged: (value) {
+                        ref
+                            .read(settingsProvider.notifier)
+                            .setDisableLiquidGlassBar(value);
+                      },
+                    ),
+                  ),
               ],
             ),
 
@@ -148,11 +196,10 @@ class SettingsScreen extends ConsumerWidget {
                       leading: const Text("Invite users"),
                       trailing: SegmentedListChevron(),
                       onTap: () {
-                        Drops.show(
+                        showSnackBar(
                           context,
-                          title: "Work in progress!",
-                          icon: Icons.warning_amber_rounded,
-                          iconColor: Colors.amber,
+                          "Work in progress",
+                          type: AlertType.warning,
                         );
                       },
                     ),

@@ -2,8 +2,8 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
-import 'package:drops/drops.dart';
 import 'package:flutter/foundation.dart';
+import 'package:logging/logging.dart';
 import 'package:flutter/material.dart';
 import 'package:habits/api_client.dart';
 import 'package:habits/service_locator.dart';
@@ -12,6 +12,8 @@ import 'package:habits/utils.dart';
 import 'package:material_segmented_list/material_segmented_list.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
 import 'package:watch_it/watch_it.dart';
+
+final _log = Logger('AddExpense');
 
 void showAddExpenseSheet(
   BuildContext context, {
@@ -251,9 +253,12 @@ class AddExpenseSheet extends WatchingStatefulWidget {
 class _AddExpenseSheetState extends State<AddExpenseSheet> {
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _dateController = TextEditingController();
+  DateTime selectedDate = DateTime.now();
   ExpenseCategory? _selectedCategory;
   SplitTypeEnum _splitType = SplitTypeEnum.equal;
   List<Participants> _participants = [];
+  User? _selectedPayer;
 
   late ApiClient apiClient;
   late Board currentBoard;
@@ -267,13 +272,21 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
     super.initState();
     apiClient = getIt.get<ApiClient>();
     currentBoard = getIt.get<CurrentBoardRepository>().currentBoard.value!;
-    _initializeParticipants(currentBoard);
+    final currentUser = getIt.get<CurrentUserRepository>().currentUser.value!;
     if (widget.expense != null) {
       _amountController.text = widget.expense!.amount.toStringAsFixed(2);
       _descriptionController.text = widget.expense!.description ?? '';
       _selectedCategory = widget.expense!.category;
       _splitType = widget.expense!.splitType;
+      _selectedPayer = widget.expense!.payer;
+      setDate(widget.expense!.date);
+    } else {
+      _selectedPayer = currentUser;
+      setDate(DateTime.now());
     }
+    _initializeParticipants(currentBoard);
+    descValid = _descriptionController.text.isNotEmpty;
+    amountValid = double.tryParse(_amountController.text) != null;
     // Listen for amount changes to recalculate participant splits
     _descriptionController.addListener(() {
       setState(() {
@@ -358,6 +371,18 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
             ),
           )
           .toList();
+      // Set controller texts directly from stored split values
+      for (var p in _participants) {
+        if (!p.isActive) {
+          p.controller.text = '0.00';
+        } else if (_splitType == SplitTypeEnum.percentage) {
+          p.controller.text = (p.percentage ?? 0.0).toStringAsFixed(2);
+        } else {
+          p.controller.text = p.amount.toStringAsFixed(2);
+        }
+      }
+      _participants.sort((a, b) => a.user.username.compareTo(b.user.username));
+      return;
     } else {
       final splitAmount = board.users.isEmpty
           ? 0.0
@@ -406,8 +431,14 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
 
   void _onParticipantChanged() {
     setState(() {
-      _updateControllerValues();
+      if (_splitType == SplitTypeEnum.equal) {
+        _updateControllerValues();
+      }
     });
+  }
+
+  void setDate(DateTime date) {
+    _dateController.text = datetimeToLocalHRFormat(date);
   }
 
   void _sendDataUpdate() async {
@@ -423,12 +454,10 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
       setState(() {
         isLoading = false;
       });
-      Drops.show(
+      showSnackBar(
         context,
-        title: "Error",
-        subtitle: "Description can't be empty",
-        icon: Icons.error_outline_rounded,
-        iconColor: Colors.red,
+        "Description can't be empty",
+        type: AlertType.error,
       );
       return;
     }
@@ -437,20 +466,13 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
       setState(() {
         isLoading = false;
       });
-      Drops.show(
+      showSnackBar(
         context,
-        title: "Error",
-        subtitle: "Amount must be a valid number",
-        icon: Icons.error_outline_rounded,
-        iconColor: Colors.red,
+        "Amount must be a valid number",
+        type: AlertType.error,
       );
       return;
     }
-
-    User currentUser = getIt
-        .get<CurrentUserRepository>()
-        .currentUser
-        .value!; // Assuming user is logged in
 
     if (widget.expense != null) {
       // Update existing expense
@@ -459,9 +481,9 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
           'amount': amount,
           'description': description,
           'category_id': _selectedCategory?.id,
+          'date': selectedDate.toIso8601String().split('T')[0],
           'split_type': _splitType.value,
-          // 'board': currentBoard.id,
-          'payer_id': currentUser.id,
+          'payer_id': _selectedPayer?.id,
           'splits': _participants
               .where((p) => p.isActive)
               .map(
@@ -469,7 +491,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                   'user': p.user.id,
                   if (_splitType == SplitTypeEnum.percentage)
                     'percentage': p.percentage ?? 0.0,
-                  'share_amount': p.amount,
+                  'share_amount': p.amount.toStringAsFixed(2),
                 },
               )
               .toList(),
@@ -479,43 +501,61 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
           isLoading = false;
         });
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to update expense: $e')),
+          showSnackBar(
+            context,
+            'Failed to update expense: ${ApiClient.parseDjangoErrorMessage(e)}',
+            type: AlertType.error,
           );
         }
         return;
       }
     } else {
-      // Create new expense
-      await apiClient.createExpense({
-        'amount': amount,
-        'description': description,
-        'category_id': _selectedCategory?.id,
-        'split_type': _splitType.value,
-        // 'board': currentBoard.id,
-        'payer_id': currentUser.id,
-        'splits': _participants
-            .where((p) => p.isActive)
-            .map(
-              (p) => {
-                'user': p.user.id,
-                if (_splitType == SplitTypeEnum.percentage)
-                  'percentage': p.percentage ?? 0.0,
-                'share_amount': p.amount,
-              },
-            )
-            .toList(),
-      }, currentBoard.id);
+      try {
+        // Create new expense
+        await apiClient.createExpense({
+          'amount': amount,
+          'description': description,
+          'category_id': _selectedCategory?.id,
+          'date': selectedDate.toIso8601String().split('T')[0],
+          'split_type': _splitType.value,
+          'payer_id': _selectedPayer?.id,
+          'splits': _participants
+              .where((p) => p.isActive)
+              .map(
+                (p) => {
+                  'user': p.user.id,
+                  if (_splitType == SplitTypeEnum.percentage)
+                    'percentage': p.percentage ?? 0.0,
+                  'share_amount': p.amount.toStringAsFixed(2),
+                },
+              )
+              .toList(),
+        }, currentBoard.id);
+      } on DioException catch (e) {
+        setState(() {
+          isLoading = false;
+        });
+        _log.warning(
+          'Failed to create expense: ${ApiClient.parseDjangoErrorMessage(e)}',
+        );
+        if (mounted) {
+          showSnackBar(
+            context,
+            'Failed to create expense: ${ApiClient.parseDjangoErrorMessage(e)}',
+            type: AlertType.error,
+          );
+        }
+        return;
+      }
     }
     setState(() {
       isLoading = false;
     });
     if (mounted) {
       Navigator.of(context).pop();
-      Drops.show(
+      showSnackBar(
         context,
-        title: widget.expense != null ? "Expense updated!" : "Expense saved!",
-        icon: Icons.save_rounded,
+        widget.expense != null ? "Expense updated!" : "Expense saved!",
       );
     }
     widget.onSaved?.call();
@@ -534,13 +574,20 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
         centerTitle: true,
         title: Text(widget.expense != null ? 'Edit expense' : 'New expense'),
         actions: [
-          TextButton(
-            onPressed: descValid && amountValid ? _sendDataUpdate : null,
-            child: const Text(
-              "Save",
-              // style: TextStyle(fontFamily: "BasteleurBold"),
+          if (isLoading)
+            const Padding(
+              padding: EdgeInsets.only(right: 14),
+              child: SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(strokeWidth: 3),
+              ),
+            )
+          else
+            TextButton(
+              onPressed: descValid && amountValid ? _sendDataUpdate : null,
+              child: const Text("Save"),
             ),
-          ),
         ],
         actionsPadding: const EdgeInsets.all(8),
       ),
@@ -552,9 +599,12 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
               constraints: BoxConstraints(minHeight: constraints.maxHeight),
               child: GestureDetector(
                 onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-                child: Stack(
-                  children: [
-                    Container(
+                child: AbsorbPointer(
+                  absorbing: isLoading,
+                  child: AnimatedOpacity(
+                    opacity: isLoading ? 0.4 : 1.0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Container(
                       // color: Colors.red, // debug red, my favorite
                       padding: const EdgeInsets.all(16),
                       child: Column(
@@ -568,127 +618,231 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                             decoration: const InputDecoration(
                               labelText: 'Name',
                               border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(
+                                vertical: 14,
+                                horizontal: 12,
+                              ),
+                              isDense: false,
                             ),
                           ),
-                          Row(
-                            children: [
-                              Expanded(
-                                flex: 2,
-                                child: TextField(
-                                  controller: _amountController,
-                                  keyboardType:
-                                      const TextInputType.numberWithOptions(
-                                        decimal: true,
-                                        signed: false,
-                                      ),
-                                  decoration: const InputDecoration(
-                                    labelText: 'Amount',
-                                    border: OutlineInputBorder(),
-                                    prefix: Text(
-                                      'E ',
-                                      style: TextStyle(
-                                        fontFamily: "BasteleurBold",
-                                        fontSize: 16,
+                          Builder(
+                            builder: (context) {
+                              final textScaler = MediaQuery.textScalerOf(
+                                context,
+                              );
+                              final fontSize =
+                                  Theme.of(
+                                    context,
+                                  ).textTheme.bodyLarge?.fontSize ??
+                                  16.0;
+                              // height = half floating-label (sits on top border)
+                              //        + contentPadding top + content + contentPadding bottom
+                              final height =
+                                  textScaler.scale(fontSize * 0.75) / 2 +
+                                  32 +
+                                  textScaler.scale(fontSize);
+                              return SizedBox(
+                                height: height,
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 2,
+                                      child: TextField(
+                                        controller: _amountController,
+                                        textAlignVertical:
+                                            TextAlignVertical.center,
+                                        keyboardType:
+                                            const TextInputType.numberWithOptions(
+                                              decimal: true,
+                                              signed: false,
+                                            ),
+                                        decoration: const InputDecoration(
+                                          labelText: 'Amount',
+                                          border: OutlineInputBorder(),
+                                          contentPadding: EdgeInsets.symmetric(
+                                            vertical: 18,
+                                            horizontal: 12,
+                                          ),
+                                          prefix: Text(
+                                            'E ',
+                                            style: TextStyle(
+                                              fontFamily: "BasteleurBold",
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                  ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      flex: 3,
+                                      child: Theme(
+                                        data: Theme.of(context).copyWith(
+                                          materialTapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                        ),
+                                        child: DropdownButtonFormField<String?>(
+                                          initialValue: _selectedCategory?.id,
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          decoration: const InputDecoration(
+                                            labelText: "Category",
+                                            border: OutlineInputBorder(),
+                                            contentPadding: EdgeInsets.fromLTRB(
+                                              12,
+                                              14,
+                                              12,
+                                              14,
+                                            ),
+                                          ),
+                                          items: [
+                                            const DropdownMenuItem<String?>(
+                                              value: null,
+                                              child: Text("None"),
+                                            ),
+                                            for (var category
+                                                in currentBoard
+                                                        ?.expenseCategories ??
+                                                    <ExpenseCategory>[])
+                                              DropdownMenuItem<String?>(
+                                                value: category.id,
+                                                child: Text(
+                                                  "${category.emoji} ${category.name}",
+                                                ),
+                                              ),
+                                          ],
+                                          onChanged: (value) {
+                                            setState(() {
+                                              if (value == null) {
+                                                _selectedCategory = null;
+                                              } else {
+                                                _selectedCategory = currentBoard
+                                                    ?.expenseCategories
+                                                    .firstWhere(
+                                                      (c) => c.id == value,
+                                                    );
+                                              }
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                flex: 3,
-                                child: DropdownButtonFormField<String?>(
-                                  initialValue: _selectedCategory?.id,
-                                  borderRadius: BorderRadius.circular(12),
-                                  decoration: const InputDecoration(
-                                    labelText: "Category",
-                                    border: OutlineInputBorder(),
-                                    contentPadding: EdgeInsets.symmetric(
-                                      vertical: 10,
-                                      horizontal: 14,
+                              );
+                            },
+                          ),
+                          Builder(
+                            builder: (context) {
+                              final textScaler = MediaQuery.textScalerOf(
+                                context,
+                              );
+                              final fontSize =
+                                  Theme.of(
+                                    context,
+                                  ).textTheme.bodyLarge?.fontSize ??
+                                  16.0;
+                              // height = half floating-label (sits on top border)
+                              //        + contentPadding top + content + contentPadding bottom
+                              final height =
+                                  textScaler.scale(fontSize * 0.75) / 2 +
+                                  32 +
+                                  textScaler.scale(fontSize);
+
+                              return SizedBox(
+                                height: height,
+                                child: Row(
+                                  spacing: 12,
+                                  children: [
+                                    Expanded(
+                                      child: Theme(
+                                        data: Theme.of(context).copyWith(
+                                          materialTapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                        ),
+                                        child: TextFormField(
+                                          controller: _dateController,
+                                          decoration: InputDecoration(
+                                            labelText: "Date",
+                                            contentPadding:
+                                                EdgeInsets.symmetric(
+                                                  vertical: 16,
+                                                  horizontal: 12,
+                                                ),
+                                          ),
+                                          readOnly:
+                                              true, // Prevents keyboard from showing
+                                          onTap: () async {
+                                            DateTime? pickedDate =
+                                                await showDatePicker(
+                                                  context: context,
+                                                  initialDate: selectedDate,
+                                                  firstDate: DateTime(2000),
+                                                  lastDate: DateTime(2101),
+                                                );
+
+                                            if (pickedDate != null) {
+                                              // Update controller with formatted date
+                                              setDate(pickedDate);
+                                            }
+                                          },
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                  items: [
-                                    const DropdownMenuItem<String?>(
-                                      value: null,
-                                      child: Text("None"),
-                                    ),
-                                    for (var category
-                                        in currentBoard?.expenseCategories ??
-                                            <ExpenseCategory>[])
-                                      DropdownMenuItem<String?>(
-                                        value: category.id,
-                                        child: Text(
-                                          "${category.emoji} ${category.name}",
+                                    if (currentBoard != null)
+                                      Expanded(
+                                        child: Theme(
+                                          data: Theme.of(context).copyWith(
+                                            materialTapTargetSize:
+                                                MaterialTapTargetSize
+                                                    .shrinkWrap,
+                                          ),
+                                          child:
+                                              DropdownButtonFormField<String>(
+                                                initialValue:
+                                                    _selectedPayer?.id,
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                decoration:
+                                                    const InputDecoration(
+                                                      labelText: "Paid by",
+                                                      border:
+                                                          OutlineInputBorder(),
+                                                      contentPadding:
+                                                          EdgeInsets.fromLTRB(
+                                                            12,
+                                                            14,
+                                                            12,
+                                                            14,
+                                                          ),
+                                                    ),
+                                                items: [
+                                                  for (var user
+                                                      in currentBoard.users)
+                                                    DropdownMenuItem<String>(
+                                                      value: user.id,
+                                                      child: Text(user.name),
+                                                    ),
+                                                ],
+                                                onChanged: (value) {
+                                                  setState(() {
+                                                    _selectedPayer =
+                                                        currentBoard.users
+                                                            .firstWhere(
+                                                              (u) =>
+                                                                  u.id == value,
+                                                            );
+                                                  });
+                                                },
+                                              ),
                                         ),
                                       ),
                                   ],
-                                  onChanged: (value) {
-                                    setState(() {
-                                      if (value == null) {
-                                        _selectedCategory = null;
-                                      } else {
-                                        _selectedCategory = currentBoard
-                                            ?.expenseCategories
-                                            .firstWhere((c) => c.id == value);
-                                      }
-                                    });
-                                  },
                                 ),
-                              ),
-                            ],
+                              );
+                            },
                           ),
-                          /* Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Padding(
-                                padding: EdgeInsetsGeometry.only(left: 4),
-                                child: Text(
-                                  "Participants",
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontFamily: "BasteleurBold",
-                                  ),
-                                ),
-                              ),
-                              SizedBox(
-                                width: 150,
-                                child: DropdownButtonFormField<String>(
-                                  initialValue: _splitType.value,
-                                  borderRadius: BorderRadius.circular(12),
-                                  decoration: const InputDecoration(
-                                    labelText: "Split type",
-                                    border: OutlineInputBorder(),
-                                    contentPadding: EdgeInsets.symmetric(
-                                      vertical: 6,
-                                      horizontal: 12,
-                                    ),
-                                  ),
-                                  items: const [
-                                    DropdownMenuItem(
-                                      value: "equal",
-                                      child: Text("Equal"),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: "percentage",
-                                      child: Text("Percent"),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: "amount",
-                                      child: Text("Amount"),
-                                    ),
-                                  ],
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _splitType = SplitTypeEnum.fromString(
-                                        value!,
-                                      );
-                                    });
-                                  },
-                                ),
-                              ),
-                            ],
-                          ), */
                           currentBoard != null
                               ? ParticipantsSection(
                                   participants: _participants,
@@ -697,6 +851,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                                   onSplitTypeChanged: (splitType) {
                                     setState(() {
                                       _splitType = splitType;
+                                      _updateControllerValues();
                                     });
                                   },
                                 )
@@ -712,16 +867,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                                 SegmentedListSection(
                                   children: [
                                     SegmentedListTile(
-                                      leading: const Text("Created by"),
-                                      trailing: Text(
-                                        widget.expense!.payer.name,
-                                      ),
-                                    ),
-                                    SegmentedListTile(
                                       leading: const Text("Delete"),
-                                      // tileColor: Theme.of(
-                                      //   context,
-                                      // ).colorScheme.errorContainer,
                                       textColor: Theme.of(
                                         context,
                                       ).colorScheme.errorContainer,
@@ -733,9 +879,10 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                                       onTap: () {
                                         showConfirmationDialog(
                                           context,
-                                          title: "Delete Expense",
-                                          content:
+                                          title:
                                               "Are you sure you want to delete this expense?",
+                                          content:
+                                              "This action cannot be undone.",
                                           isDestructive: true,
                                           onConfirm: () async {
                                             setState(() {
@@ -745,12 +892,11 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                                               await apiClient.deleteExpense(
                                                 widget.expense!.id,
                                               );
-                                              if (mounted) {
+                                              if (context.mounted) {
                                                 Navigator.of(context).pop();
-                                                Drops.show(
+                                                showSnackBar(
                                                   context,
-                                                  title: "Expense deleted",
-                                                  icon: Icons.delete_rounded,
+                                                  "Expense deleted!",
                                                 );
                                                 widget.onSaved?.call();
                                               }
@@ -758,10 +904,13 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                                               setState(() {
                                                 isLoading = false;
                                               });
-                                              Drops.show(
-                                                context,
-                                                title: "Error",
-                                              );
+                                              if (context.mounted) {
+                                                showSnackBar(
+                                                  context,
+                                                  "Error! ${ApiClient.parseDjangoErrorMessage(e)}",
+                                                  type: AlertType.error,
+                                                );
+                                              }
                                             }
                                           },
                                         );
@@ -774,18 +923,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                         ],
                       ),
                     ),
-                    if (isLoading)
-                      Positioned.fill(
-                        child: Container(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainer.withValues(alpha: 0.6),
-                          child: const Center(
-                            child: CircularProgressIndicator(),
-                          ),
-                        ),
-                      ),
-                  ],
+                  ),
                 ),
               ),
             ),

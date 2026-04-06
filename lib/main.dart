@@ -1,5 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:habits/add_expense.dart';
+import 'package:habits/utils.dart';
+import 'package:logging/logging.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:habits/api_client.dart';
 import 'package:habits/expenses_page.dart';
@@ -12,9 +17,19 @@ import 'package:habits/theme/mono_theme.dart';
 import 'package:native_glass_navbar/native_glass_navbar.dart';
 import 'constants.dart' as Constants;
 import 'package:flutter/services.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {
+  Logger.root.level = Level.ALL;
+  Logger.root.onRecord.listen((r) {
+    // ignore: avoid_print
+    print('[${r.loggerName}] ${r.level.name}: ${r.message}');
+    // ignore: avoid_print
+    if (r.error != null) print(r.error);
+  });
+
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('it_IT', null);
   await setupServiceLocator();
   // make flutter draw behind navigation bar
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -31,9 +46,7 @@ class MainApp extends ConsumerWidget {
     return MaterialApp(
       theme: monoTheme(dark: false),
       darkTheme: monoTheme(dark: true, oled: settings.oledDarkMode),
-      themeMode: settings.themeMode == ThemeMode.dark
-          ? ThemeMode.dark
-          : ThemeMode.system,
+      themeMode: settings.themeMode,
       // debugShowCheckedModeBanner: false,
       home: const MainScreen(),
     );
@@ -53,6 +66,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+    final settings = ref.watch(settingsProvider);
 
     return authState.when(
       loading: () =>
@@ -96,41 +110,24 @@ class _MainScreenState extends ConsumerState<MainScreen> {
             statusBarColor: Colors.transparent,
           ),
           child: Scaffold(
-            bottomNavigationBar:
-                (Constants.enableLiquidGlassBar
-                        ? (
-                            tabs: [
-                              NativeGlassNavBarItem(
-                                label: "Expenses",
-                                symbol: "banknote",
-                              ),
-                              NativeGlassNavBarItem(
-                                label: "Settings",
-                                symbol: "gear",
-                              ),
-                            ],
-                            actionButton: TabBarActionButton(
-                              symbol: "plus",
-                              onTap: () {
-                                // showAddExpenseSheet(context);
-                                // showCupertinoSheet(
-                                //   context: context,
-                                //   builder: (context) {
-                                //     return AddExpenseSheet();
-                                //   },
-                                // );
-                              },
-                            ),
-                            currentIndex: _selectedIndex,
-                            onTap: (index) {
-                              setState(() {
-                                _selectedIndex = index;
-                              });
-                            },
-                            fallback: fallbackNavbar,
-                          )
-                        : fallbackNavbar)
-                    as Widget,
+            bottomNavigationBar: (shouldEnableGlass(settings)
+                ? NativeGlassNavBar(
+                    tabs: [
+                      NativeGlassNavBarItem(
+                        label: "Expenses",
+                        symbol: "dollarsign",
+                      ),
+                      NativeGlassNavBarItem(label: "Settings", symbol: "gear"),
+                    ],
+                    currentIndex: _selectedIndex,
+                    onTap: (index) {
+                      setState(() {
+                        _selectedIndex = index;
+                      });
+                    },
+                    fallback: fallbackNavbar,
+                  )
+                : fallbackNavbar),
             body: [
               const ExpensesPage(),
               const SettingsScreen(),

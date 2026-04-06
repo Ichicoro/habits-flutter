@@ -13,7 +13,9 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
   if (oled) {
     c = (
       bg: const Color(0xFF000000), // Pure black for OLED
-      surface: const Color(0xFF0A0A0A), // Very dark gray
+      // surface: const Color(0xFF0A0A0A), // Very dark gray
+      surface: const Color(0xFF101010), // Very dark gray
+      // outline: const Color(0x1FFFFFFF),
       outline: const Color(0x1FFFFFFF),
       text: const Color(0xFFEDEDED),
       textMuted: const Color(0x99EDEDED),
@@ -51,7 +53,7 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
   final textTheme = google_fonts.GoogleFonts.rubikTextTheme(
     Typography.englishLike2021
         .apply(
-          fontSizeFactor: kIsWeb ? 1.0 : (Platform.isMacOS ? 1.0 : 1.2),
+          fontSizeFactor: kIsWeb ? 1.0 : (Platform.isMacOS ? 1.0 : 1.4),
           bodyColor: c.text,
           displayColor: c.text,
         )
@@ -61,8 +63,18 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
             letterSpacing: -0.5,
           ),
           titleMedium: const TextStyle(fontWeight: FontWeight.w600),
-          bodyLarge: TextStyle(color: c.text, fontWeight: FontWeight.w500),
-          bodyMedium: TextStyle(color: c.text, fontWeight: FontWeight.w500),
+          bodyLarge: TextStyle(
+            color: c.text,
+            fontWeight: FontWeight.w500,
+            fontSize: 16,
+            letterSpacing: 0.5,
+          ),
+          bodyMedium: TextStyle(
+            color: c.text,
+            fontWeight: FontWeight.w500,
+            fontSize: 14,
+            letterSpacing: 0.55,
+          ),
           bodySmall: TextStyle(color: c.textMuted),
         ),
   );
@@ -101,6 +113,7 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
     highlightColor: Colors.transparent,
     dividerColor: c.outline,
     scaffoldBackgroundColor: c.bg,
+    progressIndicatorTheme: ProgressIndicatorThemeData(year2023: false),
     appBarTheme: AppBarTheme(
       backgroundColor: c.bg,
       elevation: 0,
@@ -109,7 +122,7 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
       foregroundColor: c.text,
       titleTextStyle: TextStyle(
         color: c.text,
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.2,
         fontFamily: textTheme.titleMedium?.fontFamily,
@@ -157,6 +170,12 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
       ),
       hintStyle: TextStyle(color: c.textMuted),
     ),
+    textButtonTheme: TextButtonThemeData(
+      style: ButtonStyle(
+        textStyle: WidgetStatePropertyAll(textTheme.bodyLarge),
+        foregroundColor: WidgetStatePropertyAll(c.text),
+      ),
+    ),
     elevatedButtonTheme: ElevatedButtonThemeData(style: buttonStyle),
     filledButtonTheme: FilledButtonThemeData(style: buttonStyle),
     dividerTheme: DividerThemeData(space: 0, thickness: 1, color: c.outline),
@@ -179,11 +198,21 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
         ),
       ),
     ),
+    snackBarTheme: SnackBarThemeData(
+      contentTextStyle: textTheme.bodyMedium,
+      behavior: SnackBarBehavior.floating,
+    ),
+    floatingActionButtonTheme: FloatingActionButtonThemeData(
+      extendedTextStyle: textTheme.bodyLarge,
+    ),
     listTileTheme: ListTileThemeData(
       dense: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       iconColor: c.text,
       textColor: c.text,
+      titleTextStyle: textTheme.bodyMedium,
+      subtitleTextStyle: textTheme.bodySmall,
+      leadingAndTrailingTextStyle: textTheme.bodyMedium,
     ),
     // minimal bottom bar
     navigationBarTheme: NavigationBarThemeData(
@@ -202,6 +231,18 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
           color: c.text,
         );
       }),
+    ),
+    menuButtonTheme: MenuButtonThemeData(
+      style: ButtonStyle(
+        textStyle: WidgetStatePropertyAll(textTheme.bodyMedium),
+        foregroundColor: WidgetStatePropertyAll(c.text),
+        backgroundColor: WidgetStatePropertyAll(c.surface),
+        shape: const WidgetStatePropertyAll(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+          ),
+        ),
+      ),
     ),
     pageTransitionsTheme: PageTransitionsTheme(
       builders: {

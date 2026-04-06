@@ -9,7 +9,7 @@ final String baseApiUrl = kIsWeb
       );
 const String appName = "Echoes";
 
-const bool enableLiquidGlassBar = false;
+const bool enableLiquidGlassBar = true;
 
 const String currencyName = "Echo";
 const String currencyNamePlural = "Echoes";
