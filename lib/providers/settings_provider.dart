@@ -10,7 +10,7 @@ class AppSettings {
   const AppSettings({
     this.themeMode = ThemeMode.system,
     this.oledDarkMode = false,
-    this.disableLiquidGlassBar = false,
+    this.disableLiquidGlassBar = true,
   });
 
   AppSettings copyWith({
@@ -52,7 +52,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
     };
     final oledThemeEnabled = prefs.getBool(_oledDarkModeKey) ?? false;
     final disableLiquidGlassBar =
-        prefs.getBool(_disableLiquidGlassBarKey) ?? false;
+        prefs.getBool(_disableLiquidGlassBarKey) ?? true;
     state = AppSettings(
       themeMode: themeMode,
       oledDarkMode: oledThemeEnabled,
